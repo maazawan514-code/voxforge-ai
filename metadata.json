@@ -1,0 +1,6 @@
+{
+  "name": "VoxForge AI",
+  "description": "A high-fidelity AI Voice Generation, Cloning & Mixing interactive workspace featuring dynamic synthesizers, live Swagger api documentation, and a complete ready-to-use production Python codebase.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

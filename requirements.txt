@@ -1,0 +1,60 @@
+# Core Framework
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+pydantic==2.5.0
+pydantic-settings==2.1.0
+
+# Database
+sqlalchemy==2.0.23
+alembic==1.13.0
+psycopg[binary]==3.1.20
+
+# File Uploads
+python-multipart==0.0.6
+aiofiles==23.2.1
+
+# Authentication
+pyjwt==2.8.0
+passlib[bcrypt]==1.7.4
+python-jose[cryptography]==3.3.0
+
+# Task Queue & Caching
+redis==5.0.1
+celery==5.3.4
+rq==1.14.1
+
+# Audio Processing
+pydub==0.25.1
+ffmpeg-python==0.2.1
+librosa==0.10.0
+soundfile==0.12.1
+numpy==1.26.2
+
+# UI/Frontend
+streamlit==1.28.1
+streamlit-audio-recorder==0.0.8
+
+# Storage
+boto3==1.29.7
+
+# AI/TTS Models
+kokoro-tts==0.0.1
+pocket-tts==0.0.1
+
+# Testing
+pytest==7.4.3
+pytest-asyncio==0.21.1
+httpx==0.25.2
+coverage==7.3.2
+
+# Code Quality
+ruff==0.1.8
+black==23.12.0
+mypy==1.7.1
+
+# Utilities
+python-dotenv==1.0.0
+requests==2.31.0
+
+# Logging
+loguru==0.7.2
