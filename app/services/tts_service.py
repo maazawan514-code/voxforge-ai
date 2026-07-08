@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Optional, Tuple
 import numpy as np
 import librosa
-from config import get_settings
+from ..config import get_settings
 
 try:
     from kokoro_onnx import Kokoro

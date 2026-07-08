@@ -2,9 +2,7 @@
 import os
 import librosa
 from fastapi import HTTPException, status
-from config import get_settings
-
-settings = get_settings()
+from ..config import get_settings
 
 
 def validate_audio_file(file_path: str) -> dict:
@@ -14,6 +12,7 @@ def validate_audio_file(file_path: str) -> dict:
     Returns:
         dict: Audio metadata including duration and format
     """
+    settings = get_settings()
     if not os.path.exists(file_path):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

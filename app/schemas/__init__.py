@@ -1,5 +1,13 @@
 # Schemas package
-from .auth import UserRegister, UserLogin, UserResponse, TokenResponse, PasswordChange
+from .auth import (
+    UserRegister,
+    UserLogin,
+    UserResponse,
+    TokenResponse,
+    PasswordChange,
+    ForgotPasswordRequest,
+    MessageResponse,
+)
 from .tts import TTSGenerateRequest, AudioGenerationResponse, AudioHistoryResponse
 from .voice_clone import VoiceCloningGenerateRequest, ClonedVoiceResponse, ClonedVoiceHistoryResponse
 from .voice_mixer import (
@@ -30,4 +38,6 @@ __all__ = [
     "VoiceUpdateRequest",
     "UserManagementResponse",
     "JobStatusResponse",
+    "ForgotPasswordRequest",
+    "MessageResponse",
 ]

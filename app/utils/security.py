@@ -1,129 +1,112 @@
 ﻿"""Security utilities for authentication and authorization"""
-
+import secrets
+import string
 from datetime import datetime, timedelta
 from typing import Optional
 
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi import Depends, HTTPException, Request, Response, status
 from sqlalchemy.orm import Session
 
 from ..config import get_settings
 from ..database import get_db
 from ..models.user import User
 
-
-# Password hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-# HTTP Bearer security
-security = HTTPBearer()
 
 
 def hash_password(password: str) -> str:
-    """Hash a password"""
     return pwd_context.hash(password)
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify a password against its hash"""
     return pwd_context.verify(plain_password, hashed_password)
 
 
-def create_access_token(
-    data: dict,
-    expires_delta: Optional[timedelta] = None,
-) -> str:
-    """Create a JWT access token"""
+def generate_temp_password(length: int = 12) -> str:
+    """Generate a strong random temporary password (used for forgot-password flow)"""
+    alphabet = string.ascii_letters + string.digits + "!@#$%^&*"
+    password = [
+        secrets.choice(string.ascii_uppercase),
+        secrets.choice(string.ascii_lowercase),
+        secrets.choice(string.digits),
+        secrets.choice("!@#$%^&*"),
+    ]
+    password += [secrets.choice(alphabet) for _ in range(length - len(password))]
+    secrets.SystemRandom().shuffle(password)
+    return "".join(password)
+
+
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     settings = get_settings()
     to_encode = data.copy()
-
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(
-            minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
-        )
-
+        expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
-
-    encoded_jwt = jwt.encode(
-        to_encode,
-        settings.SECRET_KEY,
-        algorithm=settings.ALGORITHM,
-    )
-
-    return encoded_jwt
+    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 
 def verify_token(token: str) -> dict:
-    """Verify and decode a JWT token"""
     settings = get_settings()
-
     try:
-        payload = jwt.decode(
-            token,
-            settings.SECRET_KEY,
-            algorithms=[settings.ALGORITHM],
-        )
-        return payload
-
+        return jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
     except JWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication credentials",
-            headers={"WWW-Authenticate": "Bearer"},
+            detail="Invalid or expired session. Please log in again.",
         )
 
 
-async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
-    db: Session = Depends(get_db),
-) -> User:
-    """Get current authenticated user"""
+def set_auth_cookie(response: Response, token: str) -> None:
+    """Attach the httpOnly session cookie to a response (used on login)."""
+    settings = get_settings()
+    response.set_cookie(
+        key=settings.COOKIE_NAME,
+        value=token,
+        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        httponly=True,
+        secure=settings.COOKIE_SECURE,
+        samesite=settings.COOKIE_SAMESITE,
+        domain=settings.COOKIE_DOMAIN,
+        path="/",
+    )
 
-    token = credentials.credentials
+
+def clear_auth_cookie(response: Response) -> None:
+    settings = get_settings()
+    response.delete_cookie(key=settings.COOKIE_NAME, domain=settings.COOKIE_DOMAIN, path="/")
+
+
+def _extract_token(request: Request) -> str:
+    """Cookie first (browser flow), Bearer header as fallback (API clients)."""
+    settings = get_settings()
+    token = request.cookies.get(settings.COOKIE_NAME)
+    if token:
+        return token
+    auth_header = request.headers.get("Authorization")
+    if auth_header and auth_header.lower().startswith("bearer "):
+        return auth_header.split(" ", 1)[1].strip()
+    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+
+
+async def get_current_user(request: Request, db: Session = Depends(get_db)) -> User:
+    token = _extract_token(request)
     payload = verify_token(token)
-
     user_id = payload.get("sub")
-
     if user_id is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    user_id = int(user_id)
-
-    user = db.query(User).filter(User.id == user_id).first()
-
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+    user = db.query(User).filter(User.id == int(user_id)).first()
     if user is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
     if not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="User account is inactive",
-        )
-
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User account is inactive")
     return user
 
 
-async def get_current_admin_user(
-    current_user: User = Depends(get_current_user),
-) -> User:
-    """Get current admin user"""
-
+async def get_current_admin_user(current_user: User = Depends(get_current_user)) -> User:
     if current_user.role != "admin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin access required",
-        )
-
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
     return current_user

@@ -1,24 +1,82 @@
-"""Celery app configuration"""
-from celery import Celery
-from config import get_settings
+"""Storage service for file management"""
+import os
+import shutil
+from pathlib import Path
+from typing import Optional
+from ..config import get_settings
 
-settings = get_settings()
 
-# Create Celery app
-celery_app = Celery(
-    "voxforge_ai",
-    broker=settings.CELERY_BROKER_URL,
-    backend=settings.CELERY_RESULT_BACKEND,
-)
+class StorageService:
+    """Service for file storage operations"""
 
-# Configure Celery
-celery_app.conf.update(
-    task_serializer="json",
-    accept_content=["json"],
-    result_serializer="json",
-    timezone="UTC",
-    enable_utc=True,
-    task_track_started=True,
-    task_time_limit=30 * 60,  # 30 minutes
-    worker_prefetch_multiplier=4,
-)
+    def __init__(self):
+        """Initialize storage service"""
+        settings = get_settings()
+        self.storage_dir = Path(settings.UPLOAD_DIR)
+        self.storage_dir.mkdir(parents=True, exist_ok=True)
+
+    @staticmethod
+    def save_uploaded_file(file_path: str, destination: str) -> str:
+        """Save uploaded file to storage"""
+        settings = get_settings()
+        try:
+            storage_path = Path(settings.UPLOAD_DIR) / destination
+            shutil.copy(file_path, storage_path)
+            return str(storage_path)
+        except Exception as e:
+            raise Exception(f"Failed to save file: {str(e)}")
+
+    @staticmethod
+    def get_file_url(file_name: str) -> str:
+        """Get public URL for file"""
+        return f"/audio/{file_name}"
+
+    @staticmethod
+    def delete_file(file_name: str) -> bool:
+        """Delete file from storage"""
+        settings = get_settings()
+        try:
+            file_path = Path(settings.UPLOAD_DIR) / file_name
+            if file_path.exists():
+                file_path.unlink()
+                return True
+            return False
+        except Exception as e:
+            raise Exception(f"Failed to delete file: {str(e)}")
+
+    @staticmethod
+    def file_exists(file_name: str) -> bool:
+        """Check if file exists"""
+        settings = get_settings()
+        file_path = Path(settings.UPLOAD_DIR) / file_name
+        return file_path.exists()
+
+    @staticmethod
+    def get_file_size(file_name: str) -> Optional[int]:
+        """Get file size in bytes"""
+        settings = get_settings()
+        try:
+            file_path = Path(settings.UPLOAD_DIR) / file_name
+            if file_path.exists():
+                return file_path.stat().st_size
+            return None
+        except Exception:
+            return None
+
+    @staticmethod
+    def cleanup_old_files(days: int = 7) -> int:
+        """Delete files older than specified days"""
+        settings = get_settings()
+        import time
+        try:
+            storage_path = Path(settings.UPLOAD_DIR)
+            cutoff_time = time.time() - (days * 24 * 60 * 60)
+            deleted_count = 0
+            for file_path in storage_path.glob("*"):
+                if file_path.is_file():
+                    if file_path.stat().st_mtime < cutoff_time:
+                        file_path.unlink()
+                        deleted_count += 1
+            return deleted_count
+        except Exception as e:
+            raise Exception(f"Failed to cleanup files: {str(e)}")
