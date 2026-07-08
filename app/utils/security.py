@@ -1,4 +1,5 @@
 ﻿"""Security utilities for authentication and authorization"""
+import hashlib
 import secrets
 import string
 from datetime import datetime, timedelta
@@ -38,6 +39,18 @@ def generate_temp_password(length: int = 12) -> str:
     return "".join(password)
 
 
+def generate_otp_code(length: int = 6) -> str:
+    return "".join(secrets.choice(string.digits) for _ in range(length))
+
+
+def hash_otp_code(otp: str) -> str:
+    return hashlib.sha256(otp.encode("utf-8")).hexdigest()
+
+
+def verify_otp_code(otp: str, hashed_otp: str) -> bool:
+    return hash_otp_code(otp) == hashed_otp
+
+
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     settings = get_settings()
     to_encode = data.copy()
@@ -47,6 +60,21 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
         expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+
+
+def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+    settings = get_settings()
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+
+
+def hash_token(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
 def verify_token(token: str) -> dict:
@@ -75,9 +103,24 @@ def set_auth_cookie(response: Response, token: str) -> None:
     )
 
 
+def set_refresh_cookie(response: Response, token: str, expires_days: int) -> None:
+    settings = get_settings()
+    response.set_cookie(
+        key=settings.REFRESH_COOKIE_NAME,
+        value=token,
+        max_age=expires_days * 24 * 60 * 60,
+        httponly=True,
+        secure=settings.COOKIE_SECURE,
+        samesite=settings.COOKIE_SAMESITE,
+        domain=settings.COOKIE_DOMAIN,
+        path="/",
+    )
+
+
 def clear_auth_cookie(response: Response) -> None:
     settings = get_settings()
     response.delete_cookie(key=settings.COOKIE_NAME, domain=settings.COOKIE_DOMAIN, path="/")
+    response.delete_cookie(key=settings.REFRESH_COOKIE_NAME, domain=settings.COOKIE_DOMAIN, path="/")
 
 
 def _extract_token(request: Request) -> str:

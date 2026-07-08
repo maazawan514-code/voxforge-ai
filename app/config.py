@@ -42,9 +42,12 @@ class Settings(BaseSettings):
 
     SECRET_KEY: str
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+    REMEMBER_ME_REFRESH_TOKEN_EXPIRE_DAYS: int = 30
 
     COOKIE_NAME: str = "voxforge_session"
+    REFRESH_COOKIE_NAME: str = "voxforge_refresh"
     COOKIE_SECURE: bool = False
     COOKIE_SAMESITE: str = "lax"
     COOKIE_DOMAIN: str | None = None

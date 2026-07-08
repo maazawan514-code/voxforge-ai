@@ -1,8 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from .database import Base, engine
+from .database import Base, engine, ensure_database_schema
 import app.models.user
+import app.models.otp
 from .routers import auth, tts, voice_clone, voice_mixer, admin
 from .config import get_settings
 import logging
@@ -14,8 +15,8 @@ logger = logging.getLogger(__name__)
 # Get settings
 settings = get_settings()
 
-# Create database tables
-Base.metadata.create_all(bind=engine)
+# Create database tables and align any existing schema with the current auth models
+ensure_database_schema()
 
 # Initialize FastAPI app
 app = FastAPI(
