@@ -13,3 +13,12 @@ coverage/
 *.bin
 *.pt
 *.safetensors
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Stray/local files
+*.docx
+~$*
