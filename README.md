@@ -1,338 +1,148 @@
-# VoxForge AI - Python-Only Internship Project
+# VoxForge AI
 
-AI Voice Generation Platform using Python, FastAPI, Streamlit, PostgreSQL, Redis, and Celery.
+AI voice generation platform — text-to-speech, voice cloning, and voice mixing.
 
 ## Project Overview
 
-VoxForge AI is an ElevenLabs-inspired AI voice generation platform designed for interns to learn practical AI application development using only Python-related technologies.
+VoxForge AI lets users generate realistic speech from text, clone voices from audio samples, and blend multiple voices together with custom weights.
 
 ### Core Features
 
-- **Text-to-Speech**: Generate realistic speech from text using Kokoro TTS or Pocket TTS
-- **Voice Cloning**: Clone voices from audio samples using advanced AI models
-- **Voice Mixer**: Blend multiple voices with custom percentage weights
-- **Audio History**: Track and manage all generated audio files
-- **User Authentication**: Secure registration and login with JWT tokens
-- **Admin Controls**: Manage users, voices, models, and system logs
-- **Background Jobs**: Async task processing with Celery and Redis
+- **Text-to-Speech**: Generate speech from text using Kokoro TTS (ONNX) — working
+- **Voice Cloning**: Clone a voice from a reference audio sample — currently being upgraded from a placeholder to Coqui XTTS-v2
+- **Voice Mixer**: Blend multiple voices with custom percentage weights — working
+- **Audio History**: Track and play back generated audio
+- **User Authentication**: JWT-based registration and login
 
 ## Tech Stack
 
 ### Backend
-- **Framework**: FastAPI + Uvicorn
-- **Database**: PostgreSQL with SQLAlchemy ORM
-- **Cache/Queue**: Redis + Celery for background jobs
-- **Authentication**: JWT tokens with passlib/bcrypt
-- **TTS Models**: Kokoro TTS, Pocket TTS
+- **Framework**: FastAPI + Uvicorn (Python 3.14)
+- **Database**: Azure SQL Database (free tier)
+- **TTS Engine**: Kokoro ONNX
+- **Voice Cloning Engine**: Coqui XTTS-v2 (in progress; runs in a separate Python 3.11 virtual environment — see below)
+- **Authentication**: JWT tokens with passlib/bcrypt (bcrypt pinned to 4.0.1)
 
 ### Frontend
-- **UI**: Streamlit (Python-based)
-- **HTTP Client**: Requests library
+- **Framework**: React + Vite (TypeScript)
+- **Deployment**: Netlify (auto-deploys from `main` branch)
 
 ### Audio Processing
 - **Libraries**: pydub, ffmpeg-python, librosa, soundfile, numpy
-
-### Deployment
-- **Containers**: Docker & Docker Compose
-- **Server**: Gunicorn/Uvicorn
 
 ## Project Structure
 
 ```
 voxforge-ai/
 ├── app/                          # FastAPI backend
-│   ├── __init__.py
 │   ├── main.py                   # Application entry point
-│   ├── config.py                 # Configuration management
-│   ├── database.py               # Database setup
-│   ├── models/                   # SQLAlchemy ORM models
-│   │   ├── user.py
-│   │   └── voice.py
-│   ├── schemas/                  # Pydantic validation schemas
-│   │   ├── auth.py
-│   │   ├── tts.py
-│   │   ├── voice_clone.py
-│   │   ├── voice_mixer.py
-│   │   └── admin.py
-│   ├── routers/                  # API route handlers
-│   │   ├── auth.py               # Authentication endpoints
-│   │   ├── tts.py                # Text-to-Speech endpoints
-│   │   ├── voice_clone.py        # Voice cloning endpoints
-│   │   ├── voice_mixer.py        # Voice mixer endpoints
-│   │   └── admin.py              # Admin endpoints
-│   ├── services/                 # Business logic
-│   │   ├── tts_service.py        # TTS generation
-│   │   ├── voice_cloning_service.py
-│   │   ├── audio_mixer.py        # Voice mixing
-│   │   └── storage_service.py    # File storage
-│   ├── utils/                    # Utility functions
-│   │   ├── security.py           # Authentication & authorization
-│   │   └── audio_validation.py   # Audio file validation
-│   ├── workers/                  # Celery tasks
-│   │   ├── celery_app.py
-│   │   └── tasks.py
-│   ├── generated_audio/          # Generated audio files
-│   └── onnx/                     # ONNX model files
+│   ├── init_db.py                # DB seeding script
+│   ├── fix_voice_names.py        # One-off script for correcting seeded voice data
+│   ├── services/
+│   │   ├── tts_service.py        # TTS generation (Kokoro)
+│   │   ├── voice_cloning_service.py  # Voice cloning (XTTS-v2 integration in progress)
+│   │   └── audio_mixer.py        # Voice mixing
+│   ├── routers/
+│   │   └── voice_mixer.py        # Voice mixer endpoints
+│   ├── generated_audio/          # Generated audio files (not tracked in git)
+│   └── onnx/                     # Kokoro model files (model.onnx, voices.bin)
 │
-├── ui/                           # Streamlit web interface
-│   ├── streamlit_app.py
-│   └── README.md
+├── src/                           # React/Vite frontend
+│   ├── utils/api.ts               # API request helper
+│   ├── components/
+│   │   ├── TTSView.tsx
+│   │   ├── MixerView.tsx
+│   │   └── WaveformPlayer.tsx
+│   └── data/                      # (legacy mock data, being phased out)
 │
-├── requirements.txt              # Python dependencies
-├── .env.example                  # Environment variables example
-├── docker-compose.yml            # Docker Compose configuration
-├── README.md                     # This file
-└── package.json                  # Legacy frontend (deprecated)
+├── xtts_env/                      # Python 3.11 virtual environment for XTTS-v2 (local only, not in git)
+├── requirements.txt                # Backend Python dependencies (used for local dev / Render, not Netlify)
+├── .env                            # Environment variables (never commit real values)
+└── README.md
 ```
 
-## Getting Started
+## Local Development Setup
 
-### Prerequisites
+### 1. Backend (FastAPI)
 
-- Python 3.9+
-- Docker & Docker Compose
-- PostgreSQL 15
-- Redis 7
-
-### Local Development Setup
-
-#### 1. Clone and Setup Environment
-
-```bash
-# Clone repository
-git clone <repo-url>
-cd voxforge-ai
-
-# Copy environment file
-cp .env.example .env
-
-# Edit .env with your configuration
-nano .env
-```
-
-#### 2. Create Python Virtual Environment
-
-```bash
-# Create virtual environment
-python -m venv venv
-
-# Activate virtual environment
-# On Windows:
-venv\Scripts\activate
-# On macOS/Linux:
-source venv/bin/activate
-
+```powershell
 # Install dependencies
 pip install -r requirements.txt
-```
 
-#### 3. Start Services with Docker Compose
-
-```bash
-# Start PostgreSQL, Redis, and other services
-docker-compose up -d
-
-# Wait for services to be healthy
-docker-compose ps
-```
-
-#### 4. Initialize Database
-
-```bash
-# Create database tables
-python -m alembic upgrade head
-
-# Or manually create tables
-python -c "from app.database import Base, engine; from app.models import *; Base.metadata.create_all(bind=engine)"
-```
-
-#### 5. Run FastAPI Backend
-
-```bash
-# In one terminal
-cd app
-uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+# Run the backend
+python -m uvicorn app.main:app --reload
 ```
 
 Access API docs at: http://localhost:8000/docs
 
-#### 6. Run Celery Worker (Optional)
+### 2. Frontend (React/Vite)
 
-```bash
-# In another terminal
-celery -A app.workers.celery_app worker --loglevel=info
+```powershell
+npm install
+npm run dev
 ```
 
-#### 7. Run Streamlit UI
+Access UI at: http://localhost:3000 (always use `localhost:3000`, not your LAN IP — the CORS config depends on it)
 
-```bash
-# In another terminal
-streamlit run ui/streamlit_app.py
+### 3. Voice Cloning (XTTS-v2) — separate environment
+
+XTTS-v2 needs its own Python 3.11 environment because it's not yet compatible with Python 3.14:
+
+```powershell
+py -3.11 -m venv xtts_env
+.\xtts_env\Scripts\Activate.ps1
+pip install torch torchaudio
+pip install coqui-tts
+pip install "transformers<5"
+pip install "coqui-tts[codec]"
+$env:COQUI_TOS_AGREED="1"
 ```
 
-Access UI at: http://localhost:8501
+This environment is for local development/testing only — XTTS-v2 is too heavy (4-8GB RAM) for the free hosting tiers used in production.
 
-## API Endpoints
+## Database
 
-### Authentication
-- `POST /api/auth/register` - Register new user
-- `POST /api/auth/login` - Login and get token
-- `GET  /api/auth/me` - Get current user
-- `POST /api/auth/change-password` - Change password
+Using **Azure SQL Database** (free tier: 100k vCore-sec/month, 32GB). To seed voices and an admin user:
 
-### Text-to-Speech
-- `POST /api/tts/generate` - Generate speech from text
-- `GET  /api/tts/history` - Get generation history
-- `GET  /api/tts/{generation_id}` - Get specific generation
-- `DELETE /api/tts/{generation_id}` - Delete generation
-
-### Voice Cloning
-- `POST /api/voice-clone/generate` - Clone voice from sample
-- `GET  /api/voice-clone/history` - Get cloning history
-- `DELETE /api/voice-clone/{clone_id}` - Delete cloned voice
-
-### Voice Mixer
-- `POST /api/voice-mixer/generate` - Mix voices
-- `GET  /api/voice-mixer/voices` - Get available voices
-- `POST /api/voice-mixer/save-preset` - Save preset
-- `GET  /api/voice-mixer/history` - Get presets
-
-### Admin (requires admin role)
-- `POST   /api/admin/voices` - Create voice
-- `PUT    /api/admin/voices/{voice_id}` - Update voice
-- `DELETE /api/admin/voices/{voice_id}` - Delete voice
-- `GET    /api/admin/users` - List users
-- `PUT    /api/admin/users/{user_id}/role` - Update user role
-- `GET    /api/admin/jobs` - List background jobs
-- `GET    /api/admin/stats` - System statistics
-
-## Environment Variables
-
-```env
-# Application
-APP_NAME=VoxForge AI
-DEBUG=False
-
-# Database
-DATABASE_URL=postgresql://user:password@localhost:5432/voxforge_db
-
-# Redis
-REDIS_URL=redis://localhost:6379/0
-CELERY_BROKER_URL=redis://localhost:6379/1
-CELERY_RESULT_BACKEND=redis://localhost:6379/1
-
-# Authentication
-SECRET_KEY=your-secret-key-change-in-production
-ACCESS_TOKEN_EXPIRE_MINUTES=30
-
-# File Storage
-MAX_UPLOAD_SIZE=20971520  # 20MB
-UPLOAD_DIR=app/generated_audio
-
-# API Keys
-GEMINI_API_KEY=your-gemini-api-key
+```powershell
+python -m app.init_db
 ```
 
-## Testing
-
-```bash
-# Run tests
-pytest
-
-# Run with coverage
-pytest --cov=app tests/
-```
-
-## Code Quality
-
-```bash
-# Format code
-black app/ ui/
-
-# Lint code
-ruff check app/ ui/
-
-# Type checking
-mypy app/ ui/
-```
+Note: if your home/office IP changes, you'll need to re-add a firewall rule in the Azure Portal (SQL databases → Set server firewall → add client IP).
 
 ## Deployment
 
-### Using Docker Compose (Development)
+| Component | Service | Status |
+|---|---|---|
+| Frontend (React/Vite) | Netlify | ✅ Live at voxforgeai514.netlify.app |
+| Backend (FastAPI) | Render (free tier) | ⏳ Not yet deployed |
+| Database | Azure SQL (free tier) | ✅ Live |
+| Redis (Celery broker) | Upstash (free tier) | ⏳ Not yet set up |
+| Kokoro model files | Runtime download from GitHub release | ⏳ Startup script needed for Render (ephemeral disk) |
+| XTTS-v2 (voice cloning) | Local dev only | 🚧 Mid-integration |
 
-```bash
-# Build and start all services
-docker-compose up -d
+**Important**: `requirements.txt` lives in `app/` (not the repo root) specifically so that Netlify doesn't try to auto-install Python dependencies when building the frontend.
 
-# View logs
-docker-compose logs -f
+## Git Workflow
 
-# Stop services
-docker-compose down
+**Commit and push after every single fix — no exceptions.** This project was burned once by an AI coding assistant silently reverting a working file with no commit history to recover from.
+
+```powershell
+git add .
+git commit -m "fix: <short description>"
+git push
 ```
 
-### Production Deployment
+## Known Issues / In Progress
 
-Use one of these platforms:
-- **Railway**: `railway up`
-- **Render**: Connect GitHub repo to Render
-- **Fly.io**: `fly deploy`
-- **DigitalOcean**: App Platform
-- **AWS**: Elastic Container Service
+- Voice cloning still needs `app/services/voice_cloning_service.py`'s `_clone_with_pocket_tts()` rewritten to call real XTTS-v2 instead of the placeholder sine-wave tone
+- Backend not yet deployed to Render
+- Frontend's `VITE_API_BASE_URL` on Netlify is still a placeholder (`http://localhost:8000`) until the backend has a public URL
 
-## Roadmap
+## Security Note
 
-### Week 1: Setup & Foundation
-- [x] Project structure
-- [x] Database setup
-- [x] FastAPI initialization
-- [x] Streamlit UI scaffold
-
-### Week 2: Authentication
-- [x] User registration/login
-- [x] JWT token implementation
-- [x] Protected routes
-- [ ] Password reset flow
-
-### Week 3: TTS Implementation
-- [ ] Kokoro TTS integration
-- [ ] Pocket TTS integration
-- [ ] Audio file storage
-- [ ] Playback functionality
-
-### Week 4: Voice Cloning
-- [ ] Audio upload handling
-- [ ] Validation pipeline
-- [ ] Cloning model integration
-- [ ] Result storage
-
-### Week 5: Voice Mixer
-- [ ] Voice weight mixing
-- [ ] Audio blending
-- [ ] Preset saving
-- [ ] History tracking
-
-### Week 6: Admin & Polish
-- [ ] Admin panel
-- [ ] User management
-- [ ] Voice library management
-- [ ] System monitoring
-
-### Week 7-8: Testing & Deployment
-- [ ] Unit testing
-- [ ] Integration testing
-- [ ] Docker setup
-- [ ] Production deployment
-
-## License
-
-MIT License - See LICENSE file for details
-
-## Support
-
-For issues, questions, or suggestions, please open an issue on GitHub or contact the development team.
+Never commit or paste `.env` contents anywhere. If credentials have been exposed accidentally, rotate them (SECRET_KEY, API keys, SMTP password, database connection string) immediately.
 
 ---
 
-**Last Updated**: 2026-06-23  
-**Version**: 1.0.0-alpha
+**Last Updated**: 2026-07-21
