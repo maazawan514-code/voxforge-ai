@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 
 # Get settings
 settings = get_settings()
+print("DEBUG CORS_ORIGINS:", settings.CORS_ORIGINS)
 
 # Create database tables and align any existing schema with the current auth models
 ensure_database_schema()
