@@ -31,8 +31,6 @@ soundfile==0.12.1
 numpy==1.26.2
 
 # UI/Frontend
-streamlit==1.28.1
-streamlit-audio-recorder==0.0.8
 
 # Storage
 boto3==1.29.7
