@@ -1,5 +1,6 @@
 ﻿import React, { useEffect, useState } from 'react';
 import { Lock, Mail, User, Eye, EyeOff, Loader2, AlertCircle, ShieldCheck } from 'lucide-react';
+import { request } from '../utils/api';
 
 interface VoiceAuthViewProps {
   onSignIn: (name: string, email: string, role: 'admin' | 'user' | 'intern', token?: string) => void;
@@ -110,18 +111,14 @@ export default function VoiceAuthView({ onSignIn }: VoiceAuthViewProps) {
     setError(null);
     setSuccess(null);
     try {
-      const res = await fetch('/api/auth/login', {
+      const data = await request('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: loginForm.email, password: loginForm.password }),
       });
-      const data = await res.json();
-      if (!res.ok) {
-        if (data.detail && typeof data.detail === 'string' && data.detail.includes('Email not verified')) {
-          openEmailVerification(loginForm.email, 'login', 'Email not verified. Verify your account using the OTP sent to your inbox.');
-          return;
-        }
-        throw new Error(data.detail || 'Login failed');
+      if (data.detail && typeof data.detail === 'string' && data.detail.includes('Email not verified')) {
+        openEmailVerification(loginForm.email, 'login', 'Email not verified. Verify your account using the OTP sent to your inbox.');
+        return;
       }
       localStorage.setItem('token', data.access_token);
       onSignIn(data.user.name, data.user.email, data.user.role, data.access_token);
@@ -149,13 +146,11 @@ export default function VoiceAuthView({ onSignIn }: VoiceAuthViewProps) {
     setError(null);
     setSuccess(null);
     try {
-      const res = await fetch('/api/auth/register', {
+      const data = await request('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: registerForm.name, email: registerForm.email, password: registerForm.password }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || 'Registration failed');
 
       openEmailVerification(registerForm.email, 'register', 'Account created. Check your email for the OTP to verify your account.');
       setLoginForm((prev: LoginForm) => ({ ...prev, email: registerForm.email }));
@@ -176,13 +171,11 @@ export default function VoiceAuthView({ onSignIn }: VoiceAuthViewProps) {
     setEmailVerificationError(null);
     setEmailVerificationSuccess(null);
     try {
-      const res = await fetch('/api/auth/verify-email', {
+      const data = await request('/api/auth/verify-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: emailVerificationAddress, otp: emailVerificationOtp }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || 'Verification failed');
 
       setEmailVerificationStage('idle');
       setEmailVerificationContext(null);
@@ -205,13 +198,11 @@ export default function VoiceAuthView({ onSignIn }: VoiceAuthViewProps) {
     setEmailVerificationError(null);
     setEmailVerificationSuccess(null);
     try {
-      const res = await fetch('/api/auth/resend-otp', {
+      const data = await request('/api/auth/resend-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: emailVerificationAddress }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || 'Unable to resend OTP');
 
       setEmailVerificationResendTimer(60);
       setEmailVerificationSuccess(data.message || 'A new OTP has been sent.');
@@ -231,13 +222,11 @@ export default function VoiceAuthView({ onSignIn }: VoiceAuthViewProps) {
     setForgotError(null);
     setForgotMessage(null);
     try {
-      const response = await fetch('/api/auth/forgot-password', {
+      const data = await request('/api/auth/forgot-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: forgotEmail }),
       });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.detail || 'Could not send the OTP.');
 
       setForgotMode('otp');
       setForgotOtp('');
@@ -259,13 +248,11 @@ export default function VoiceAuthView({ onSignIn }: VoiceAuthViewProps) {
     setForgotError(null);
     setForgotMessage(null);
     try {
-      const response = await fetch('/api/auth/verify-reset-otp', {
+      const data = await request('/api/auth/verify-reset-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: forgotEmail, otp: forgotOtp }),
       });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.detail || 'OTP verification failed.');
 
       setForgotMode('reset');
       setForgotMessage('OTP verified successfully. Set a new password below.');
@@ -293,13 +280,11 @@ export default function VoiceAuthView({ onSignIn }: VoiceAuthViewProps) {
     setForgotError(null);
     setForgotMessage(null);
     try {
-      const response = await fetch('/api/auth/reset-password', {
+      const data = await request('/api/auth/reset-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: forgotEmail, otp: forgotOtp, new_password: forgotNewPassword }),
       });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.detail || 'Password reset failed.');
 
       closeForgotPassword();
       setSuccess(data.message || 'Password reset successful. You can now login.');

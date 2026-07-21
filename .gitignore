@@ -24,3 +24,7 @@ __pycache__/
 ~$*
 
 app/generated_audio/
+
+xtts_env/
+test_xtts.py
+test_output.wav

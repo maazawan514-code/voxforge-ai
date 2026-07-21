@@ -15,6 +15,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { AudioGeneration, Voice } from '../types';
+import { request } from '../utils/api';
 
 interface HistoryViewProps {
   history: AudioGeneration[];
@@ -79,11 +80,11 @@ export default function HistoryView({
     setIsLoadingCloned(true);
     setError(null);
     try {
-      const res = await fetch('/api/voice-clone/history', {
+      const data = await request('/api/voice-clone/history', {
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+      }).catch(() => {
+        throw new Error('Failed to load cloned voices');
       });
-      if (!res.ok) throw new Error('Failed to load cloned voices');
-      const data = await res.json();
       setClonedVoices(
         data.map((v: any) => ({
           id: String(v.id),
@@ -105,11 +106,11 @@ export default function HistoryView({
     setIsLoadingMixed(true);
     setError(null);
     try {
-      const res = await fetch('/api/voice-mixer/history', {
+      const data = await request('/api/voice-mixer/history', {
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+      }).catch(() => {
+        throw new Error('Failed to load mixed voices');
       });
-      if (!res.ok) throw new Error('Failed to load mixed voices');
-      const data = await res.json();
       setMixedVoices(
         data.map((v: any) => ({
           id: String(v.id),
@@ -145,7 +146,7 @@ export default function HistoryView({
 
   const handleDeleteTTS = async (id: string) => {
     try {
-      await fetch(`/api/tts/${id}`, {
+      await request(`/api/tts/${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
       });
@@ -157,7 +158,7 @@ export default function HistoryView({
 
   const handleDeleteCloned = async (id: string) => {
     try {
-      await fetch(`/api/voice-clone/${id}`, {
+      await request(`/api/voice-clone/${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
       });
@@ -169,7 +170,7 @@ export default function HistoryView({
 
   const handleDeleteMixed = async (id: string) => {
     try {
-      await fetch(`/api/voice-mixer/${id}`, {
+      await request(`/api/voice-mixer/${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
       });

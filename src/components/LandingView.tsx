@@ -13,6 +13,7 @@ import {
   GitBranch
 } from 'lucide-react';
 import { Voice } from '../types';
+import { request } from '../utils/api';
 
 interface LandingViewProps {
   voices: Voice[];
@@ -144,13 +145,11 @@ export default function LandingView({ voices, onSignIn }: LandingViewProps) {
     setForgotMessage(null);
 
     try {
-      const response = await fetch('/api/auth/forgot-password', {
+      const data = await request('/api/auth/forgot-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: forgotEmail }),
       });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.detail || 'Could not send the OTP.');
 
       setForgotMode('otp');
       setForgotOtp('');
@@ -174,13 +173,11 @@ export default function LandingView({ voices, onSignIn }: LandingViewProps) {
     setForgotMessage(null);
 
     try {
-      const response = await fetch('/api/auth/verify-reset-otp', {
+      const data = await request('/api/auth/verify-reset-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: forgotEmail, otp: forgotOtp }),
       });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.detail || 'OTP verification failed.');
 
       setForgotMode('reset');
       setForgotMessage('OTP verified successfully. Set a new password below.');
@@ -210,13 +207,11 @@ export default function LandingView({ voices, onSignIn }: LandingViewProps) {
     setForgotMessage(null);
 
     try {
-      const response = await fetch('/api/auth/reset-password', {
+      const data = await request('/api/auth/reset-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: forgotEmail, otp: forgotOtp, new_password: newPassword }),
       });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.detail || 'Password reset failed.');
 
       setShowForgotPassword(false);
       setForgotMode('email');

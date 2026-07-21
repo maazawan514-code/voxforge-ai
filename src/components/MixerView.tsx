@@ -12,6 +12,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { Voice, MixedVoice } from '../types';
+import { request } from '../utils/api';
 import WaveformPlayer from './WaveformPlayer';
 
 interface MixerViewProps {
@@ -72,23 +73,20 @@ export default function MixerView({ voices, onAddVoice }: MixerViewProps) {
   const fetchSavedPresets = async () => {
     setIsLoadingPresets(true);
     try {
-      const res = await fetch('/api/voice-mixer/history', {
+      const data: any[] = await request('/api/voice-mixer/history', {
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
       });
-      if (res.ok) {
-        const data: any[] = await res.json();
-        const mapped: SavedPreset[] = data.map((p) => ({
-          id: String(p.id),
-          name: p.name,
-          voiceOneName: voices.find((v) => v.id === String(p.voice_one_id))?.name ?? `Voice ${p.voice_one_id}`,
-          voiceTwoName: voices.find((v) => v.id === String(p.voice_two_id))?.name ?? `Voice ${p.voice_two_id}`,
-          weightA: Math.round(p.voice_one_weight * 100),
-          weightB: Math.round(p.voice_two_weight * 100),
-          audioUrl: p.audio_url ?? null,
-          createdAt: p.created_at,
-        }));
-        setSavedPresets(mapped);
-      }
+      const mapped: SavedPreset[] = data.map((p) => ({
+        id: String(p.id),
+        name: p.name,
+        voiceOneName: voices.find((v) => v.id === String(p.voice_one_id))?.name ?? `Voice ${p.voice_one_id}`,
+        voiceTwoName: voices.find((v) => v.id === String(p.voice_two_id))?.name ?? `Voice ${p.voice_two_id}`,
+        weightA: Math.round(p.voice_one_weight * 100),
+        weightB: Math.round(p.voice_two_weight * 100),
+        audioUrl: p.audio_url ?? null,
+        createdAt: p.created_at,
+      }));
+      setSavedPresets(mapped);
     } catch {
       // Silently ignore — presets are optional
     } finally {
@@ -117,7 +115,7 @@ export default function MixerView({ voices, onAddVoice }: MixerViewProps) {
         voice_two_weight: weightB / 100,
       };
 
-      const res = await fetch('/api/voice-mixer/generate', {
+      const data = await request('/api/voice-mixer/generate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -125,13 +123,6 @@ export default function MixerView({ voices, onAddVoice }: MixerViewProps) {
         },
         body: JSON.stringify(body),
       });
-
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.detail ?? 'Mixing failed');
-      }
-
-      const data = await res.json();
       setMixedAudioUrl(data.audio_url);
       setMixedAudioId(data.audio_id);
 
@@ -172,7 +163,7 @@ export default function MixerView({ voices, onAddVoice }: MixerViewProps) {
         voice_one_weight: weightA / 100,
         voice_two_weight: weightB / 100,
       };
-      const res = await fetch('/api/voice-mixer/save-preset', {
+      await request('/api/voice-mixer/save-preset', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -180,10 +171,6 @@ export default function MixerView({ voices, onAddVoice }: MixerViewProps) {
         },
         body: JSON.stringify(body),
       });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.detail ?? 'Save failed');
-      }
       await fetchSavedPresets();
     } catch (err: any) {
       setError(err?.message ?? 'Could not save preset.');
@@ -194,7 +181,7 @@ export default function MixerView({ voices, onAddVoice }: MixerViewProps) {
 
   const handleDeletePreset = async (presetId: string) => {
     try {
-      await fetch(`/api/voice-mixer/${presetId}`, {
+      await request(`/api/voice-mixer/${presetId}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
       });
