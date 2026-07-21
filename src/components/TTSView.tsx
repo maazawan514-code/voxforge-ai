@@ -12,7 +12,7 @@ import {
   Activity
 } from 'lucide-react';
 import { Voice, AudioGeneration } from '../types';
-import { synthesizeWebAudio } from '../utils/audioGen';
+import { API_BASE_URL, generateTTS } from '../utils/api';
 import WaveformPlayer from './WaveformPlayer';
 
 interface TTSViewProps {
@@ -67,40 +67,34 @@ export default function TTSView({ voices, onAddGeneration }: TTSViewProps) {
     if (!voiceObj) return;
 
     setIsSynthesizing(true);
-    setProgress(0);
-    setProgressLog(['Starting Celery Job ID #job_9a823b1fc...', 'Submitting payload to Redis Broker...']);
+    setProgress(5);
+    setProgressLog(['Submitting payload to backend TTS service...']);
 
-    // Simulate Background Celery Engine progress
-    const steps = [
-      { p: 15, log: 'UVICORN -> Accepted text payload, parameters verified successfully.' },
-      { p: 35, log: 'CELERY -> Spawned tts_worker daemon matching PID #1025.' },
-      { p: 60, log: 'MODEL -> Executing neural vocoder calculations (extracting speaker latent weights).' },
-      { p: 85, log: 'AUDIO -> Modulating decibel gains, trimming silences, encoding PCM 16-bit WAV.' },
-      { p: 100, log: 'DATABASE -> Saved AudioGeneration index and synced media output stream.' }
-    ];
-
-    for (let i = 0; i < steps.length; i++) {
-      await new Promise(resolve => setTimeout(resolve, selectedModel === 'Kokoro TTS' ? 450 : 600));
-      setProgress(steps[i].p);
-      setProgressLog(prev => [...prev, steps[i].log]);
-    }
-
-    // Determine custom pitch/tones depending on chosen voice profile
-    let pitchVal = 1.0;
-    if (voiceObj.gender === 'Female') pitchVal = 1.8;
-    if (voiceObj.name.includes('Glinda')) pitchVal = 2.4;
-    if (voiceObj.name.includes('Dom_Deep')) pitchVal = 0.65;
-    if (voiceObj.name.includes('Adam_UK')) pitchVal = 0.85;
-
-    // Run the actual web-synthesizer code containing realistic wav generation
     try {
-      const liveWavUrl = await synthesizeWebAudio(text, selectedModel, pitchVal, speed);
+      const modelName = selectedModel === 'Kokoro TTS' ? 'kokoro' : 'pocket_tts';
+      const response = await generateTTS({
+        text,
+        model_name: modelName,
+        voice_id: parseInt(selectedVoiceId, 10),
+        speed,
+      });
+
+      setProgress(80);
+      setProgressLog(prev => [...prev, 'Backend returned generation result, retrieving audio URL...']);
+
+      if (!response.audio_url) {
+        throw new Error('Audio URL was not returned from the backend.');
+      }
+
+      const liveWavUrl = `${API_BASE_URL}${response.audio_url}`;
       setGeneratedAudioUrl(liveWavUrl);
-      
+      setProgress(100);
+      setProgressLog(prev => [...prev, 'Audio available, ready for playback.']);
+
       const newGen: AudioGeneration = {
         id: `gen_${Math.random().toString(36).substr(2, 9)}`,
         userId: 'u_logged_in_default',
-        text: text,
+        text,
         modelName: selectedModel,
         voiceId: selectedVoiceId,
         voiceName: voiceObj.name,
@@ -108,12 +102,13 @@ export default function TTSView({ voices, onAddGeneration }: TTSViewProps) {
         duration: Math.round(Math.max(text.length * 0.08, 1.5) / speed * 10) / 10,
         fileSize: `${(Math.max(text.length * 0.05, 0.45) / 10).toFixed(2)} MB`,
         status: 'completed',
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
       };
-      
+
       onAddGeneration(newGen);
     } catch (err: any) {
-      console.error(err);
+      setProgressLog(prev => [...prev, `Error: ${err?.message || 'TTS generation failed.'}`]);
+      alert(err?.message || 'TTS generation failed. Please try again.');
     } finally {
       setIsSynthesizing(false);
     }

@@ -167,8 +167,8 @@ class TTSService:
             return {
                 "audio_id": audio_id,
                 "file_path": str(filename),
-                "audio_url": f"/api/audio/{audio_id}",
-                "download_url": f"/api/audio/{audio_id}/download",
+                "audio_url": f"/api/tts/audio/{audio_id}",
+                "download_url": f"/api/tts/audio/{audio_id}/download",
                 "duration": duration,
                 "sample_rate": sample_rate,
                 "status": "completed",
@@ -210,8 +210,8 @@ class TTSService:
         return {
             "audio_id": audio_id,
             "file_path": str(filename),
-            "audio_url": f"/api/audio/{audio_id}",
-            "download_url": f"/api/audio/{audio_id}/download",
+            "audio_url": f"/api/tts/audio/{audio_id}",
+            "download_url": f"/api/tts/audio/{audio_id}/download",
             "duration": duration,
             "sample_rate": sample_rate,
             "status": "completed",
@@ -242,8 +242,8 @@ class TTSService:
         return {
             "audio_id": audio_id,
             "file_path": str(filename),
-            "audio_url": f"/api/audio/{audio_id}",
-            "download_url": f"/api/audio/{audio_id}/download",
+            "audio_url": f"/api/tts/audio/{audio_id}",
+            "download_url": f"/api/tts/audio/{audio_id}/download",
             "duration": duration,
             "sample_rate": sample_rate,
             "status": "completed",
