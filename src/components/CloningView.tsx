@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { 
   Mic, 
   Upload, 
@@ -9,9 +9,11 @@ import {
   FileDown, 
   X,
   Volume2
-} from 'lucide-react';
+} from 'lucide-react'; 
+import { API_BASE_URL, generateClonedVoice } from '../utils/api';
 import { Voice } from '../types';
 import WaveformPlayer from './WaveformPlayer';
+
 
 interface CloningViewProps {
   onRegisterClonedVoice: (newVoice: Voice) => void;
@@ -22,8 +24,9 @@ export default function CloningView({ onRegisterClonedVoice }: CloningViewProps)
   const [dragActive, setDragActive] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isCloning, setIsCloning] = useState(false);
-  const [clonedVoiceUrl, setClonedVoiceUrl] = useState<string | null>(null);
+  const [clonedResult, setClonedResult] = useState<any | null>(null);
   const [progress, setProgress] = useState(0);
+  const [error, setError] = useState<string | null>(null);
 
   // File analysis simulation metrics outputs state
   const [fileMetrics, setFileMetrics] = useState<{
@@ -35,9 +38,6 @@ export default function CloningView({ onRegisterClonedVoice }: CloningViewProps)
     isValid: boolean;
     error?: string;
   } | null>(null);
-
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const animationRef = useRef<number | null>(null);
 
   // File drop selectors helper
   const handleDrag = (e: React.DragEvent) => {
@@ -119,150 +119,57 @@ export default function CloningView({ onRegisterClonedVoice }: CloningViewProps)
   const removeSelectedFile = () => {
     setSelectedFile(null);
     setFileMetrics(null);
-    setClonedVoiceUrl(null);
+    setClonedResult(null);
+    setError(null);
+    setProgress(0);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
-
-  // Canvas visual oscillator frequency generation logic
-  useEffect(() => {
-    if (!canvasRef.current) return;
-    const ctx = canvasRef.current.getContext('2d');
-    if (!ctx) return;
-
-    let phase = 0;
-    const drawWave = () => {
-      if (!canvasRef.current || !ctx) return;
-      ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-      
-      const width = canvasRef.current.width;
-      const height = canvasRef.current.height;
-      const midY = height / 2;
-
-      ctx.lineWidth = 1.5;
-      
-      // Draw training adaptative waveform lines
-      if (isCloning) {
-        // Active multi-phase training signal visualization
-        ctx.strokeStyle = '#f27d26'; // Orange indices
-        ctx.beginPath();
-        for (let x = 0; x < width; x++) {
-          const t = x / width;
-          const y = midY + Math.sin(t * 15 + phase) * Math.sin(t * 5) * (midY - 10) * Math.cos(phase * 0.5) * Math.sin(t * Math.PI);
-          if (x === 0) ctx.moveTo(x, y);
-          else ctx.lineTo(x, y);
-        }
-        ctx.stroke();
-
-        ctx.strokeStyle = '#fbbf24'; // Amber indices
-        ctx.beginPath();
-        for (let x = 0; x < width; x++) {
-          const t = x / width;
-          const y = midY + Math.sin(t * 32 - phase * 1.5) * (midY - 20) * Math.sin(t * Math.PI) * Math.sin(phase * 0.3);
-          if (x === 0) ctx.moveTo(x, y);
-          else ctx.lineTo(x, y);
-        }
-        ctx.stroke();
-        
-        phase += 0.08;
-      } else if (selectedFile) {
-        // Static clean parsed voice waves representation
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-        ctx.beginPath();
-        for (let x = 0; x < width; x++) {
-          const t = x / width;
-          const y = midY + Math.sin(t * 10) * Math.cos(t * 22) * 20 * Math.sin(t * Math.PI);
-          if (x === 0) ctx.moveTo(x, y);
-          else ctx.lineTo(x, y);
-        }
-        ctx.stroke();
-      } else {
-        // Flatline
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
-        ctx.beginPath();
-        ctx.moveTo(0, midY);
-        ctx.lineTo(width, midY);
-        ctx.stroke();
-      }
-
-      animationRef.current = requestAnimationFrame(drawWave);
-    };
-
-    drawWave();
-    return () => {
-      if (animationRef.current) cancelAnimationFrame(animationRef.current);
-    };
-  }, [isCloning, selectedFile]);
 
   const handleCloningTrigger = async () => {
     if (!selectedFile || !fileMetrics?.isValid) return;
 
     setIsCloning(true);
     setProgress(0);
+    setError(null);
+    setClonedResult(null);
 
     try {
-      const form = new FormData();
-      form.append('name', voiceName || 'Cloned Voice Preset');
-      // Provide a short default text for synthesis if none supplied
-      form.append('text', 'This is a short sample text used to generate the cloned voice.');
-      form.append('model_name', 'pocket_tts');
-      form.append('file', selectedFile, selectedFile.name);
+      // The backend is blocking, so we just wait for the result.
+      // A real implementation would use XHR for progress, but api.ts uses fetch.
+      // We will simulate progress and then show "processing".
+      setProgress(50); // Simulate upload
 
-      await new Promise((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.open('POST', '/api/voice-clone/generate');
+      const res = await generateClonedVoice(
+        {
+          name: voiceName || 'Cloned Voice Preset',
+          text: 'This is a short sample text used to generate the cloned voice.',
+          model_name: 'pocket_tts',
+          file: selectedFile,
+        },
+        (p) => setProgress(p) // This won't be called with fetch
+      );
 
-        xhr.upload.onprogress = (e) => {
-          if (e.lengthComputable) {
-            const percent = Math.round((e.loaded / e.total) * 80); // upload portion
-            setProgress(percent);
-          }
-        };
+      setProgress(100);
+      setClonedResult(res);
 
-        xhr.onreadystatechange = () => {
-          if (xhr.readyState === XMLHttpRequest.DONE) {
-            if (xhr.status >= 200 && xhr.status < 300) {
-              try {
-                const res = JSON.parse(xhr.responseText);
-                // Backend returns cloned_voice_id, name, audio_url, duration, etc.
-                setClonedVoiceUrl(res.audio_url || res.audio_url || null);
-                // mark upload progress complete
-                setProgress(100);
+      const newVoice: Voice = {
+        id: `clone_${res.cloned_voice_id}`,
+        name: res.name || voiceName,
+        modelName: 'Pocket TTS',
+        voiceType: 'cloned',
+        gender: 'Nuance',
+        age: 'Speaker Adapt',
+        accent: 'Custom Adapted',
+        description: `Cloned from ${selectedFile.name}`,
+        isActive: true,
+        createdAt: new Date().toISOString(),
+        avatarColor: 'from-orange-500 to-amber-600'
+      };
+      onRegisterClonedVoice(newVoice);
 
-                const newVoice: Voice = {
-                  id: res.cloned_voice_id ? `clone_${res.cloned_voice_id}` : `clone_${Math.random().toString(36).substr(2,9)}`,
-                  name: res.name || voiceName,
-                  modelName: 'Pocket TTS',
-                  voiceType: 'cloned',
-                  gender: 'Nuance',
-                  age: 'Speaker Adapt',
-                  accent: 'Custom Adapted',
-                  description: `Cloned from ${selectedFile.name}`,
-                  isActive: true,
-                  createdAt: new Date().toISOString(),
-                  avatarColor: 'from-orange-500 to-amber-600'
-                };
-
-                onRegisterClonedVoice(newVoice);
-                resolve(null);
-              } catch (err) {
-                reject(err);
-              }
-            } else {
-              reject(new Error(`Upload failed: ${xhr.status} ${xhr.statusText} - ${xhr.responseText}`));
-            }
-          }
-        };
-
-        xhr.onerror = () => reject(new Error('Network error during upload'));
-        xhr.send(form);
-      });
     } catch (err: any) {
-      console.error('Cloning upload error', err);
-      setFileMetrics(prev => ({
-        ...(prev || {}),
-        isValid: false,
-        error: err?.message || 'Upload failed'
-      }));
+      console.error('Cloning error', err);
+      setError(err.message || 'Voice cloning failed. The process may have timed out or an internal error occurred.');
     } finally {
       setIsCloning(false);
     }
@@ -373,6 +280,15 @@ export default function CloningView({ onRegisterClonedVoice }: CloningViewProps)
               )}
             </div>
 
+            {error && (
+              <div className="p-4 bg-rose-950/20 border border-rose-900/40 text-rose-300 rounded-xl text-xs flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="font-bold">Cloning Failed</p>
+                  <p className="mt-1">{error}</p>
+                </div>
+              </div>
+            )}
             {/* Validation indicators card */}
             {fileMetrics && (
               <div className={`p-5 rounded-2xl border text-xs leading-relaxed ${
@@ -426,7 +342,7 @@ export default function CloningView({ onRegisterClonedVoice }: CloningViewProps)
                   isCloning ? 'opacity-70 cursor-wait' : 'hover:scale-[1.01]'
                 }`}
               >
-                <Cpu className="w-5 h-5 fill-black animate-pulse" />
+                <Cpu className={`w-5 h-5 fill-black ${isCloning ? 'animate-pulse' : ''}`} />
                 {isCloning ? `Adapting voice vectors... (${progress}%)` : 'Train voice adaptation model'}
               </button>
             )}
@@ -437,8 +353,8 @@ export default function CloningView({ onRegisterClonedVoice }: CloningViewProps)
         {/* Right side status and visual oscillator canvas */}
         <div className="space-y-6">
           
-          {clonedVoiceUrl ? (
-            <div className="bg-[#0a0a0a] p-6 border border-white/10 rounded-3xl text-center space-y-6 shadow-xl relative overflow-hidden">
+          {clonedResult ? (
+            <div className="bg-[#0a0a0a] p-6 border border-white/10 rounded-3xl space-y-6 shadow-xl relative overflow-hidden">
               <div className="absolute top-0 left-0 w-full h-1 bg-orange-500"></div>
               
               <div className="w-16 h-16 rounded-full bg-black border border-white/10 text-emerald-400 mx-auto flex items-center justify-center shadow-lg shadow-emerald-500/10">
@@ -446,12 +362,12 @@ export default function CloningView({ onRegisterClonedVoice }: CloningViewProps)
               </div>
 
               <div>
-                <h3 className="font-sans font-extrabold text-white text-base">Adaptation registered</h3>
-                <p className="text-xs text-white/50 mt-2">
+                <h3 className="font-sans font-extrabold text-white text-base text-center">Adaptation registered</h3>
+                <p className="text-xs text-white/50 mt-2 text-center">
                    "**{voiceName}**" successfully mapped! It has been exported to the dropdown choices list. Select this preset inside the text-to-speech tab.
                 </p>
               </div>
-
+              
               <div className="p-3.5 bg-black rounded-2xl border border-white/10 text-left text-xs font-mono space-y-1">
                 <div className="flex justify-between">
                   <span className="text-white/30">Preset Type:</span>
@@ -462,6 +378,12 @@ export default function CloningView({ onRegisterClonedVoice }: CloningViewProps)
                   <span className="text-white">Pocket TTS</span>
                 </div>
               </div>
+
+              <WaveformPlayer
+                audioUrl={`${API_BASE_URL}${clonedResult.audio_url}`}
+                title="Generated Clone Playback"
+                subtitle="Listen to the final synthesized output"
+              />
             </div>
           ) : (
             <div className="space-y-6">
@@ -474,19 +396,11 @@ export default function CloningView({ onRegisterClonedVoice }: CloningViewProps)
                   Analyzes acoustic traits and wave formantes in real time. Oscilloscopes will react to validation and adaptation states below.
                 </p>
                 
-                {/* Specialized dynamic canvas drawing waveforms */}
-                <div className="bg-black border border-white/10 rounded-2xl overflow-hidden h-28 relative flex items-center justify-center">
-                  <canvas 
-                    ref={canvasRef} 
-                    width={300} 
-                    height={110} 
-                    className="w-full h-full block"
-                  />
-                  
+                <div className="bg-black border border-white/10 rounded-2xl h-28 relative flex items-center justify-center">
                   {isCloning && (
-                    <div className="absolute inset-0 bg-black/50 backdrop-blur-[1px] flex flex-col justify-center items-center">
+                    <div className="flex flex-col justify-center items-center">
                       <div className="w-6 h-6 border-2 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
-                      <span className="text-[10px] uppercase font-mono tracking-widest text-orange-400 mt-2 font-semibold">Running adapters ({progress}%)</span>
+                      <span className="text-[10px] uppercase font-mono tracking-widest text-orange-400 mt-2 font-semibold">Processing...</span>
                     </div>
                   )}
                 </div>
@@ -495,7 +409,6 @@ export default function CloningView({ onRegisterClonedVoice }: CloningViewProps)
               {selectedFile && (
                 <WaveformPlayer 
                   audioUrl={null}
-                  file={selectedFile}
                   title="Uploaded Reference Spectrum"
                   subtitle="Parsed raw human vocal tract characteristics"
                 />

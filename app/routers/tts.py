@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.orm import Session
 import os
+from typing import Optional
 from ..database import get_db
 from ..models.user import User
 from ..models.voice import AudioGeneration, Voice
@@ -16,7 +17,7 @@ router = APIRouter()
 @router.get("/voices")
 async def get_available_voices(
     model_name: str = None,
-    current_user: User = Depends(get_current_user),
+    current_user: Optional[User] = Depends(get_current_user),
 ):
     """Get available voices for TTS generation"""
     voices = TTSService.get_available_voices(model_name)

@@ -18,6 +18,7 @@ import VoiceAuthView from './components/VoiceAuthView';
 
 import { Voice, AudioGeneration } from './types';
 import { initialVoices } from './data/voices';
+import { getTTSVoices, TTSVoice } from './utils/api';
 
 export default function App() {
   // Session Authentication state default to null showing premium landing instructions
@@ -25,6 +26,43 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<string>('landing');
   const [voices, setVoices] = useState<Voice[]>(initialVoices);
   const [backgroundJobsCount, setBackgroundJobsCount] = useState(0);
+
+  // Fetch real voices from backend on mount
+  useEffect(() => {
+    const fetchRealVoices = async () => {
+      const token = localStorage.getItem('token');
+      if (!token) return; // Wait for authentication
+
+      try {
+        const response = await getTTSVoices('kokoro');
+        const ttsVoices = response.voices?.['kokoro'] ?? [];
+
+        if (ttsVoices.length > 0) {
+          // Convert TTSVoice objects to Voice objects with required fields
+          const convertedVoices: Voice[] = ttsVoices.map((voice: TTSVoice) => ({
+            id: String(voice.id), // Convert numeric id to string
+            name: voice.name,
+            modelName: 'Kokoro TTS',
+            voiceType: 'preset',
+            gender: voice.type === 'female' ? 'Female' : 'Male',
+            age: voice.type === 'female' ? 'Young Adult' : 'Adult',
+            accent: 'International',
+            description: `${voice.type === 'female' ? 'Female' : 'Male'} voice: ${voice.name}`,
+            isActive: true,
+            createdAt: new Date().toISOString(),
+            avatarColor: voice.type === 'female' ? 'from-rose-500 to-pink-400' : 'from-blue-500 to-cyan-400'
+          }));
+
+          setVoices(convertedVoices);
+        }
+      } catch (err) {
+        console.warn('Failed to fetch real voices from backend, using default voices:', err);
+        // Falls back to initialVoices on error
+      }
+    };
+
+    fetchRealVoices();
+  }, []);
 
   // Simulated History record index
   const [history, setHistory] = useState<AudioGeneration[]>([

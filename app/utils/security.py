@@ -124,8 +124,13 @@ def clear_auth_cookie(response: Response) -> None:
 
 
 def _extract_token(request: Request) -> str:
-    """Cookie first (browser flow), Bearer header as fallback (API clients)."""
+    """Cookie first (browser flow), Bearer header as fallback (API clients). Skip auth for OPTIONS."""
     settings = get_settings()
+    
+    # OPTIONS requests should be handled by CORS middleware, but if they reach here, allow them
+    if request.method == "OPTIONS":
+        return "options-preflight"  # Dummy token for preflight
+    
     token = request.cookies.get(settings.COOKIE_NAME)
     if token:
         return token
@@ -137,6 +142,11 @@ def _extract_token(request: Request) -> str:
 
 async def get_current_user(request: Request, db: Session = Depends(get_db)) -> User:
     token = _extract_token(request)
+    
+    # Allow OPTIONS preflight requests to bypass authentication
+    if token == "options-preflight":
+        return None
+    
     payload = verify_token(token)
     user_id = payload.get("sub")
     if user_id is None:

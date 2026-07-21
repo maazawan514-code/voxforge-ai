@@ -28,10 +28,10 @@ def init_voices():
                 is_active=True,
             ),
             Voice(
-                name="af_michael",
+                name="am_michael",
                 model_name="kokoro",
                 voice_type="male",
-                preview_url="https://example.com/preview/af_michael.wav",
+                preview_url="https://example.com/preview/am_michael.wav",
                 is_active=True,
             ),
             Voice(
@@ -42,16 +42,16 @@ def init_voices():
                 is_active=True,
             ),
             Voice(
-                name="af_biden",
+                name="af_bella",
                 model_name="kokoro",
-                voice_type="male",
-                preview_url="https://example.com/preview/af_biden.wav",
+                voice_type="female",
+                preview_url="https://example.com/preview/af_bella.wav",
                 is_active=True,
             ),
             Voice(
                 name="af_alloy",
                 model_name="kokoro",
-                voice_type="male",
+                voice_type="female",
                 preview_url="https://example.com/preview/af_alloy.wav",
                 is_active=True,
             ),

@@ -272,8 +272,6 @@ async def verify_reset_otp(payload: OTPVerifyRequest, db: Session = Depends(get_
     if not verify_otp_code(payload.otp, otp_record.otp_hash):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid OTP")
 
-    otp_record.used = True
-    db.commit()
     return MessageResponse(message="OTP verified successfully")
 
 

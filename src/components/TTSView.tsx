@@ -112,7 +112,7 @@ export default function TTSView({ voices, onAddGeneration }: TTSViewProps) {
       };
       
       onAddGeneration(newGen);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
     } finally {
       setIsSynthesizing(false);
@@ -141,7 +141,7 @@ export default function TTSView({ voices, onAddGeneration }: TTSViewProps) {
       <div className="border-b border-white/10 pb-6 flex justify-between items-center flex-wrap gap-4">
         <div>
           <h1 className="font-sans font-extrabold text-2xl text-white tracking-tight flex items-center gap-2">
-            🗣️ AI Vocal Synthesizer (TTS)
+            ≡ƒùú∩╕Å AI Vocal Synthesizer (TTS)
           </h1>
           <p className="text-xs text-white/50 mt-1">
             Feed natural texts into the neural networks to materialize vocals containing rich timbres and pacing parameters.
@@ -202,7 +202,7 @@ export default function TTSView({ voices, onAddGeneration }: TTSViewProps) {
                 >
                   {filteredVoices.map(v => (
                     <option key={v.id} value={v.id}>
-                      {v.name} ({v.gender} • {v.accent} • {v.voiceType})
+                      {v.name} ({v.gender} ΓÇó {v.accent} ΓÇó {v.voiceType})
                     </option>
                   ))}
                   {filteredVoices.length === 0 && (
@@ -272,7 +272,6 @@ export default function TTSView({ voices, onAddGeneration }: TTSViewProps) {
               <Volume2 className="w-5 h-5 fill-black" />
               {isSynthesizing ? 'Baking Waveform Spectra...' : 'Synthesize speech wave'}
             </button>
-
           </div>
         </div>
 
@@ -348,4 +347,4 @@ export default function TTSView({ voices, onAddGeneration }: TTSViewProps) {
       </div>
     </div>
   );
-}
+};

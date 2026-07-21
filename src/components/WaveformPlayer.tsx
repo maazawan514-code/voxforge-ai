@@ -65,30 +65,34 @@ export default function WaveformPlayer({
 
     if (!activeSrc) return;
 
-    // Create Audio Element
-    const audioObj = new Audio(activeSrc);
-    audioRef.current = audioObj;
-
-    const handleLoadedMetadata = () => {
-      setDuration(audioObj.duration || 5.0);
-    };
-
-    const handleEnded = () => {
-      setIsPlaying(false);
-      setCurrentTime(0);
-      if (onPlayStateChange) onPlayStateChange(false);
-    };
-
-    audioObj.addEventListener('loadedmetadata', handleLoadedMetadata);
-    audioObj.addEventListener('ended', handleEnded);
-
     // Perform browser-side Web Audio DSP decoding (acting as Librosa engine equivalent)
-    decodeAndAnalyse(activeSrc);
+    // This also returns a blob URL for authenticated endpoints
+    decodeAndAnalyse(activeSrc).then((blobUrl) => {
+      // Create Audio Element using the authenticated blob URL
+      const srcToUse = blobUrl || activeSrc;
+      const audioObj = new Audio(srcToUse);
+      audioRef.current = audioObj;
+
+      const handleLoadedMetadata = () => {
+        setDuration(audioObj.duration || 5.0);
+      };
+
+      const handleEnded = () => {
+        setIsPlaying(false);
+        setCurrentTime(0);
+        if (onPlayStateChange) onPlayStateChange(false);
+      };
+
+      audioObj.addEventListener('loadedmetadata', handleLoadedMetadata);
+      audioObj.addEventListener('ended', handleEnded);
+    });
 
     return () => {
-      audioObj.removeEventListener('loadedmetadata', handleLoadedMetadata);
-      audioObj.removeEventListener('ended', handleEnded);
-      audioObj.pause();
+      if (audioRef.current) {
+        audioRef.current.removeEventListener('loadedmetadata', () => {});
+        audioRef.current.removeEventListener('ended', () => {});
+        audioRef.current.pause();
+      }
       if (file && activeSrc) {
         URL.revokeObjectURL(activeSrc);
       }
@@ -157,14 +161,17 @@ export default function WaveformPlayer({
     });
   };
 
-  const decodeAndAnalyse = async (src: string) => {
+  const decodeAndAnalyse = async (src: string): Promise<string | null> => {
     setIsAnalysing(true);
     setCorsWarning(false);
     try {
       // If indeed we are loading a remote S3 sample, try loading it with credentials.
       // For localhost blobs we get zero issues!
+      const isLocalUrl = src.startsWith('blob:') || src.startsWith('data:');
+      const token = localStorage.getItem('token');
       const response = await fetch(src, {
-        mode: src.startsWith('blob:') || src.startsWith('data:') ? 'cors' : 'cors'
+        mode: 'cors',
+        headers: isLocalUrl ? {} : (token ? { Authorization: `Bearer ${token}` } : {})
       });
       
       if (!response.ok) {
@@ -172,6 +179,14 @@ export default function WaveformPlayer({
       }
 
       const arrayBuffer = await response.arrayBuffer();
+      
+      // Create a blob URL from the authenticated fetch for playback
+      let blobUrl: string | null = null;
+      if (!isLocalUrl) {
+        const blob = new Blob([arrayBuffer], { type: 'audio/mpeg' });
+        blobUrl = URL.createObjectURL(blob);
+      }
+      
       const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
       const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
       const channelData = audioBuffer.getChannelData(0);
@@ -232,12 +247,15 @@ export default function WaveformPlayer({
         tempo: calculatedTempo
       });
 
+      return blobUrl;
+
     } catch (err) {
       console.warn("AudioContext decode error (CORS or codec restriction), initializing fallback waveform: ", err);
       if (!src.startsWith('blob:') && !src.startsWith('data:')) {
         setCorsWarning(true);
       }
-      generateFallbackPeaks(file ? file.name : (audioUrl ? audioUrl.split('/').pop() : "VoxForge"));
+      generateFallbackPeaks(src.includes('/') ? src.split('/').pop() : "VoxForge");
+      return null;
     } finally {
       setIsAnalysing(false);
     }

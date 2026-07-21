@@ -1,0 +1,855 @@
+﻿diff --git a/app/services/tts_service.py b/app/services/tts_service.py
+index aa544dc..f27eb0a 100644
+--- a/app/services/tts_service.py
++++ b/app/services/tts_service.py
+@@ -118,8 +118,8 @@ class TTSService:
+             return {
+                 "audio_id": audio_id,
+                 "file_path": str(filename),
+-                "audio_url": f"/api/audio/{audio_id}",
+-                "download_url": f"/api/audio/{audio_id}/download",
++                "audio_url": f"/api/tts/audio/{audio_id}",
++                "download_url": f"/api/tts/audio/{audio_id}/download",
+                 "duration": duration,
+                 "sample_rate": sample_rate,
+                 "status": "completed",
+@@ -161,8 +161,8 @@ class TTSService:
+         return {
+             "audio_id": audio_id,
+             "file_path": str(filename),
+-            "audio_url": f"/api/audio/{audio_id}",
+-            "download_url": f"/api/audio/{audio_id}/download",
++            "audio_url": f"/api/tts/audio/{audio_id}",
++            "download_url": f"/api/tts/audio/{audio_id}/download",
+             "duration": duration,
+             "sample_rate": sample_rate,
+             "status": "completed",
+@@ -193,13 +193,13 @@ class TTSService:
+         return {
+             "audio_id": audio_id,
+             "file_path": str(filename),
+-            "audio_url": f"/api/audio/{audio_id}",
+-            "download_url": f"/api/audio/{audio_id}/download",
++            "audio_url": f"/api/tts/audio/{audio_id}",
++            "download_url": f"/api/tts/audio/{audio_id}/download",
+             "duration": duration,
+             "sample_rate": sample_rate,
+             "status": "completed",
+         }
+-    
++
+     @staticmethod
+     def get_audio_file(audio_id: str, user_id: Optional[int] = None) -> Optional[Path]:
+         """Get audio file path"""
+diff --git a/src/App.tsx b/src/App.tsx
+index fb50b33..890ae19 100644
+--- a/src/App.tsx
++++ b/src/App.tsx
+@@ -1,11 +1,5 @@
+-/**
+- * @license
+- * SPDX-License-Identifier: Apache-2.0
+- */
+-
+ import React, { useState, useEffect } from 'react';
+ import Sidebar from './components/Sidebar';
+-import LandingView from './components/LandingView';
+ import DashboardView from './components/DashboardView';
+ import TTSView from './components/TTSView';
+ import CloningView from './components/CloningView';
+@@ -14,149 +8,137 @@ import HistoryView from './components/HistoryView';
+ import SwaggerView from './components/SwaggerView';
+ import CodeVaultView from './components/CodeVaultView';
+ import AdminView from './components/AdminView';
++import LandingView from './components/LandingView';
+ import VoiceAuthView from './components/VoiceAuthView';
+-
+ import { Voice, AudioGeneration } from './types';
+ import { initialVoices } from './data/voices';
+ 
+ export default function App() {
+-  // Session Authentication state default to null showing premium landing instructions
+-  const [currentUser, setCurrentUser] = useState<{ name: string; email: string; role: 'admin' | 'user' | 'intern' } | null>(null);
+-  const [activeTab, setActiveTab] = useState<string>('landing');
++  const [activeTab, setActiveTab] = useState('dashboard');
+   const [voices, setVoices] = useState<Voice[]>(initialVoices);
++  const [history, setHistory] = useState<AudioGeneration[]>([]);
+   const [backgroundJobsCount, setBackgroundJobsCount] = useState(0);
++  const [currentUser, setCurrentUser] = useState<{ name: string; email: string; role: 'admin' | 'user' | 'intern' } | null>(null);
+ 
+-  // Simulated History record index
+-  const [history, setHistory] = useState<AudioGeneration[]>([
+-    {
+-      id: "gen_sample_1",
+-      userId: "u_demo",
+-      text: "VoxForge AI provides rapid development interfaces for interns researching acoustic formants adaptation layers.",
+-      modelName: "Kokoro TTS",
+-      voiceId: "v1",
+-      voiceName: "Rachel Preset",
+-      audioUrl: "https://speech-samples.s3.amazonaws.com/rachel_intro.wav", // dummy preview
+-      duration: 5.4,
+-      fileSize: "0.45 MB",
+-      status: "completed",
+-      isFavorite: true,
+-      createdAt: "2026-06-20T08:15:00Z"
+-    },
+-    {
+-      id: "gen_sample_2",
+-      userId: "u_demo",
+-      text: "This model delivers high texture and baritone details matching professional podcast specifications.",
+-      modelName: "Pocket TTS",
+-      voiceId: "v5",
+-      voiceName: "Dom Deep Preset",
+-      audioUrl: "https://speech-samples.s3.amazonaws.com/dom_intro.wav", // dummy preview
+-      duration: 4.8,
+-      fileSize: "0.38 MB",
+-      status: "completed",
+-      isFavorite: false,
+-      createdAt: "2026-06-20T07:11:00Z"
++  // Check for existing token on initial load
++  useEffect(() => {
++    const token = localStorage.getItem('token');
++    if (token) {
++      // In a real app, you'd verify the token with the backend
++      // For this mock, we'll just fetch user info
++      fetch('/api/auth/me', {
++        headers: { Authorization: `Bearer ${token}` }
++      })
++      .then(res => {
++        if (res.ok) return res.json();
++        throw new Error('Session expired');
++      })
++      .then(data => {
++        setCurrentUser({
++          name: data.name,
++          email: data.email,
++          role: data.role,
++        });
++        setActiveTab('dashboard');
++      })
++      .catch(() => {
++        // Token is invalid or expired
++        localStorage.removeItem('token');
++        setCurrentUser(null);
++        setActiveTab('landing');
++      });
++    } else {
++      setActiveTab('landing');
+     }
+-  ]);
++  }, []);
+ 
+-  // Handle active session login from the landing block form
+-  const handleSignIn = (name: string, email: string, role: 'admin' | 'user' | 'intern') => {
++  const handleSignIn = (name: string, email: string, role: 'admin' | 'user' | 'intern', token?: string) => {
+     setCurrentUser({ name, email, role });
++    if (token) {
++      localStorage.setItem('token', token);
++    }
+     setActiveTab('dashboard');
+   };
+ 
+   const handleLogout = () => {
++    localStorage.removeItem('token');
+     setCurrentUser(null);
+     setActiveTab('landing');
+   };
+ 
+-  // State handlers inside History listing
+-  const handleDeleteGeneration = (id: string) => {
+-    setHistory(prev => prev.filter(item => item.id !== id));
+-  };
+-
+-  const handleToggleFavorite = (id: string) => {
+-    setHistory(prev => prev.map(item => item.id === id ? { ...item, isFavorite: !item.isFavorite } : item));
+-  };
+-
+   const handleAddGeneration = (newGen: AudioGeneration) => {
+     setHistory(prev => [newGen, ...prev]);
+   };
+ 
+-  const handleRegisterClonedVoice = (newVoice: Voice) => {
+-    setVoices(prev => [newVoice, ...prev]);
++  const handleDeleteGeneration = (id: string) => {
++    setHistory(prev => prev.filter(gen => gen.id !== id));
+   };
+ 
+-  const handleAddBlendedVoice = (newVoice: Voice) => {
+-    setVoices(prev => [newVoice, ...prev]);
++  const handleToggleFavorite = (id: string) => {
++    setHistory(prev => prev.map(gen => 
++      gen.id === id ? { ...gen, isFavorite: !gen.isFavorite } : gen
++    ));
+   };
+ 
+-  // Automatically update background running tasks alerts count mapping
+-  useEffect(() => {
+-    if (activeTab === 'tts' || activeTab === 'cloning' || activeTab === 'mixer') {
+-      setBackgroundJobsCount(prev => prev > 0 ? prev : 1);
+-      const timer = setTimeout(() => {
+-        setBackgroundJobsCount(0);
+-      }, 5500);
+-      return () => clearTimeout(timer);
+-    }
+-  }, [activeTab]);
++  const handleAddVoice = (newVoice: Voice) => {
++    setVoices(prev => [newVoice, ...prev]);
++  };
+ 
+-  // Main navigation screens route switcher
+-  const renderActiveView = () => {
++  const renderActiveTab = () => {
+     switch (activeTab) {
+-      case 'landing':
+-        return <LandingView voices={voices} onSignIn={handleSignIn} />;
+       case 'dashboard':
+-        return (
+-          <DashboardView 
+-            voices={voices} 
+-            history={history} 
+-            setActiveTab={setActiveTab} 
+-            currentUser={currentUser} 
+-          />
+-        );
++        return <DashboardView 
++                  voices={voices} 
++                  history={history} 
++                  setActiveTab={setActiveTab} 
++                  currentUser={currentUser} 
++                />;
+       case 'tts':
+-        return <TTSView voices={voices} onAddGeneration={handleAddGeneration} />;
++        return <TTSView user={currentUser} />;
+       case 'cloning':
+-        return <CloningView onRegisterClonedVoice={handleRegisterClonedVoice} />;
++        return <CloningView onRegisterClonedVoice={handleAddVoice} />;
+       case 'mixer':
+-        return <MixerView voices={voices} onAddVoice={handleAddBlendedVoice} />;
++        return <MixerView voices={voices} onAddVoice={handleAddVoice} />;
+       case 'history':
+-        return (
+-          <HistoryView 
+-            history={history} 
+-            onDeleteGeneration={handleDeleteGeneration} 
+-            onToggleFavorite={handleToggleFavorite} 
+-          />
+-        );
++        return <HistoryView 
++                  history={history} 
++                  voices={voices}
++                  onDeleteGeneration={handleDeleteGeneration} 
++                  onToggleFavorite={handleToggleFavorite} 
++                />;
+       case 'swagger':
+         return <SwaggerView />;
+       case 'codevault':
+         return <CodeVaultView />;
++      case 'admin':
++        return currentUser?.role === 'admin' ? <AdminView /> : <DashboardView voices={voices} history={history} setActiveTab={setActiveTab} currentUser={currentUser} />;
+       case 'voiceauth':
+         return <VoiceAuthView onSignIn={handleSignIn} currentUser={currentUser} />;
+-      case 'admin':
+-        return <AdminView />;
++      case 'landing':
+       default:
+         return <LandingView voices={voices} onSignIn={handleSignIn} />;
+     }
+   };
+ 
++  if (!currentUser) {
++    if (activeTab === 'voiceauth') {
++      return <VoiceAuthView onSignIn={handleSignIn} currentUser={currentUser} />;
++    }
++    return <LandingView voices={voices} onSignIn={handleSignIn} />;
++  }
++
+   return (
+-    <div id="app-root-container" className="flex h-screen w-screen overflow-hidden bg-[#050505] font-sans text-[#e0e0e0] antialiased">
+-      {/* Dynamic sidebar left rail */}
++    <div className="flex h-screen bg-[#050505] font-sans">
+       <Sidebar 
+         activeTab={activeTab} 
+         setActiveTab={setActiveTab} 
+-        currentUser={currentUser} 
++        currentUser={currentUser}
+         onLogout={handleLogout}
+         backgroundJobsCount={backgroundJobsCount}
+       />
+-
+-      {/* Primary content area panel */}
+-      <main id="app-main-view" className="flex-1 flex flex-col h-full overflow-hidden relative">
+-        {renderActiveView()}
++      <main className="flex-1 flex flex-col overflow-hidden">
++        {renderActiveTab()}
+       </main>
+     </div>
+   );
+-}
++}
+\ No newline at end of file
+diff --git a/src/components/TTSView.tsx b/src/components/TTSView.tsx
+index 5b7628f..5919c1c 100644
+--- a/src/components/TTSView.tsx
++++ b/src/components/TTSView.tsx
+@@ -1,351 +1,188 @@
+-import React, { useState, useEffect, useRef } from 'react';
+-import { 
+-  Volume2, 
+-  Settings, 
+-  Play, 
+-  Pause, 
+-  Download, 
+-  Cpu, 
+-  Clock, 
+-  Trash2, 
+-  Heart,
+-  Activity
+-} from 'lucide-react';
+-import { Voice, AudioGeneration } from '../types';
+-import { synthesizeWebAudio } from '../utils/audioGen';
++import React, { useState, useEffect } from 'react';
++import { getTTSVoices, generateTTS, TTSVoice, API_BASE_URL } from '@/utils/api';
+ import WaveformPlayer from './WaveformPlayer';
++import { Play, Loader, AlertTriangle, Download } from 'lucide-react';
+ 
+ interface TTSViewProps {
+-  voices: Voice[];
+-  onAddGeneration: (gen: AudioGeneration) => void;
++  user: { name: string; email: string; role: string } | null;
+ }
+ 
+-export default function TTSView({ voices, onAddGeneration }: TTSViewProps) {
+-  const [text, setText] = useState('VoxForge AI bridges the gap between deep speech synthesis models and modern workflows. This is a secure developer sandbox preview.');
+-  const [selectedModel, setSelectedModel] = useState<'Kokoro TTS' | 'Pocket TTS'>('Kokoro TTS');
+-  const [selectedVoiceId, setSelectedVoiceId] = useState('');
++const TTSView: React.FC<TTSViewProps> = ({ user }) => {
++  const [text, setText] = useState('Hello, this is a test of the text-to-speech engine. This new implementation calls the real FastAPI backend.');
++  const [selectedModel, setSelectedModel] = useState('kokoro');
++  const [availableVoices, setAvailableVoices] = useState<TTSVoice[]>([]);
++  const [selectedVoiceId, setSelectedVoiceId] = useState<number | undefined>(undefined);
+   const [speed, setSpeed] = useState(1.0);
+-  const [isSynthesizing, setIsSynthesizing] = useState(false);
+-  
+-  // Progress flow representing background celery workers
+-  const [progress, setProgress] = useState(0);
+-  const [progressLog, setProgressLog] = useState<string[]>([]);
+-  
+-  const [generatedAudioUrl, setGeneratedAudioUrl] = useState<string | null>(null);
+-  const [isPlaying, setIsPlaying] = useState(false);
+-  const audioRef = useRef<HTMLAudioElement | null>(null);
++  const [isLoading, setIsLoading] = useState(false);
++  const [voicesLoading, setVoicesLoading] = useState(false);
++  const [error, setError] = useState<string | null>(null);
++  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+ 
+-  // Filter voices according to active model selecting
+-  const filteredVoices = voices.filter(v => v.modelName === selectedModel && v.isActive);
+-
+-  useEffect(() => {
+-    if (filteredVoices.length > 0) {
+-      setSelectedVoiceId(filteredVoices[0].id);
+-    }
+-  }, [selectedModel]);
+-
+-  // Clean playbacks on unmount
+   useEffect(() => {
+-    return () => {
+-      if (audioRef.current) {
+-        audioRef.current.pause();
++    const fetchVoices = async () => {
++      setVoicesLoading(true);
++      setError(null);
++      try {
++        const response = await getTTSVoices(selectedModel);
++        const voices = response.voices?.[selectedModel] ?? [];
++        setAvailableVoices(voices);
++        setSelectedVoiceId(voices[0]?.id);
++        if (voices.length === 0) {
++          setError(`No voices available for ${selectedModel}.`);
++        }
++      } catch (err: any) {
++        setError(err.message || 'Failed to load voices.');
++        setAvailableVoices([]);
++        setSelectedVoiceId(undefined);
++      } finally {
++        setVoicesLoading(false);
+       }
+     };
+-  }, []);
+ 
+-  const handleSynthesize = async () => {
+-    if (text.trim().length < 5) {
+-      alert('The vocal narrative script must contain at least 5 character dimensions.');
+-      return;
++    fetchVoices();
++  }, [selectedModel]);
++
++  useEffect(() => {
++    if (availableVoices.length > 0 && selectedVoiceId === undefined) {
++      setSelectedVoiceId(availableVoices[0].id);
+     }
+-    if (text.trim().length > 5000) {
+-      alert('Maximum text bounds matched (5,000 constraint).');
++  }, [availableVoices, selectedVoiceId]);
++
++  const handleGenerate = async () => {
++    if (!text.trim() || selectedVoiceId === undefined) {
++      setError('Text and voice must be selected.');
+       return;
+     }
+ 
+-    const voiceObj = voices.find(v => v.id === selectedVoiceId);
+-    if (!voiceObj) return;
+-
+-    setIsSynthesizing(true);
+-    setProgress(0);
+-    setProgressLog(['Starting Celery Job ID #job_9a823b1fc...', 'Submitting payload to Redis Broker...']);
+-
+-    // Simulate Background Celery Engine progress
+-    const steps = [
+-      { p: 15, log: 'UVICORN -> Accepted text payload, parameters verified successfully.' },
+-      { p: 35, log: 'CELERY -> Spawned tts_worker daemon matching PID #1025.' },
+-      { p: 60, log: 'MODEL -> Executing neural vocoder calculations (extracting speaker latent weights).' },
+-      { p: 85, log: 'AUDIO -> Modulating decibel gains, trimming silences, encoding PCM 16-bit WAV.' },
+-      { p: 100, log: 'DATABASE -> Saved AudioGeneration index and synced media output stream.' }
+-    ];
+-
+-    for (let i = 0; i < steps.length; i++) {
+-      await new Promise(resolve => setTimeout(resolve, selectedModel === 'Kokoro TTS' ? 450 : 600));
+-      setProgress(steps[i].p);
+-      setProgressLog(prev => [...prev, steps[i].log]);
++    if (!user) {
++      setError('You must be signed in to generate audio.');
++      return;
+     }
+ 
+-    // Determine custom pitch/tones depending on chosen voice profile
+-    let pitchVal = 1.0;
+-    if (voiceObj.gender === 'Female') pitchVal = 1.8;
+-    if (voiceObj.name.includes('Glinda')) pitchVal = 2.4;
+-    if (voiceObj.name.includes('Dom_Deep')) pitchVal = 0.65;
+-    if (voiceObj.name.includes('Adam_UK')) pitchVal = 0.85;
++    setIsLoading(true);
++    setError(null);
++    setAudioUrl(null);
+ 
+-    // Run the actual web-synthesizer code containing realistic wav generation
+     try {
+-      const liveWavUrl = await synthesizeWebAudio(text, selectedModel, pitchVal, speed);
+-      setGeneratedAudioUrl(liveWavUrl);
+-      
+-      const newGen: AudioGeneration = {
+-        id: `gen_${Math.random().toString(36).substr(2, 9)}`,
+-        userId: 'u_logged_in_default',
+-        text: text,
+-        modelName: selectedModel,
+-        voiceId: selectedVoiceId,
+-        voiceName: voiceObj.name,
+-        audioUrl: liveWavUrl,
+-        duration: Math.round(Math.max(text.length * 0.08, 1.5) / speed * 10) / 10,
+-        fileSize: `${(Math.max(text.length * 0.05, 0.45) / 10).toFixed(2)} MB`,
+-        status: 'completed',
+-        createdAt: new Date().toISOString()
+-      };
+-      
+-      onAddGeneration(newGen);
+-    } catch (err) {
+-      console.error(err);
+-    } finally {
+-      setIsSynthesizing(false);
+-    }
+-  };
+-
+-  const togglePlayback = () => {
+-    if (!generatedAudioUrl) return;
+-    if (!audioRef.current) {
+-      audioRef.current = new Audio(generatedAudioUrl);
+-      audioRef.current.onended = () => setIsPlaying(false);
+-    }
++      const response = await generateTTS({
++        text,
++        model_name: selectedModel,
++        voice_id: selectedVoiceId,
++        speed,
++      });
++
++      if (!response.audio_url) {
++        throw new Error(response.error_message || 'Failed to generate audio.');
++      }
+ 
+-    if (isPlaying) {
+-      audioRef.current.pause();
+-      setIsPlaying(false);
+-    } else {
+-      audioRef.current.play();
+-      setIsPlaying(true);
++      const fullAudioUrl = response.audio_url.startsWith('http')
++        ? response.audio_url
++        : `${API_BASE_URL}${response.audio_url}`;
++      setAudioUrl(fullAudioUrl);
++    } catch (err: any) {
++      setError(err.message || 'An unexpected error occurred.');
++    } finally {
++      setIsLoading(false);
+     }
+   };
+ 
+   return (
+-    <div className="flex-1 overflow-y-auto bg-[#050505] text-[#e0e0e0] p-8 space-y-8">
+-      {/* Title */}
+-      <div className="border-b border-white/10 pb-6 flex justify-between items-center flex-wrap gap-4">
+-        <div>
+-          <h1 className="font-sans font-extrabold text-2xl text-white tracking-tight flex items-center gap-2">
+-            ≡ƒùú∩╕Å AI Vocal Synthesizer (TTS)
+-          </h1>
+-          <p className="text-xs text-white/50 mt-1">
+-            Feed natural texts into the neural networks to materialize vocals containing rich timbres and pacing parameters.
+-          </p>
+-        </div>
+-        <span className="text-xs font-mono font-bold text-orange-400 bg-orange-500/5 border border-orange-500/25 px-3 py-1 rounded">
+-          Kokoro v0.19 Ready
+-        </span>
+-      </div>
+-
+-      <div className="grid lg:grid-cols-3 gap-8">
+-        
+-        {/* Core parameters panel */}
+-        <div className="lg:col-span-2 space-y-6">
+-          <div className="bg-[#0a0a0a] p-6 border border-white/10 rounded-3xl space-y-6">
+-            
+-            {/* Model select & Voice preset dropdown row */}
+-            <div className="grid sm:grid-cols-2 gap-6">
+-              <div>
+-                <label className="text-[11px] font-mono uppercase tracking-wider text-white/40 block mb-2 font-bold">
+-                  1. TTS Models API Backbone
+-                </label>
+-                <div className="grid grid-cols-2 gap-2">
+-                  <button
+-                    id="btn-model-kokoro"
+-                    onClick={() => setSelectedModel('Kokoro TTS')}
+-                    className={`py-2.5 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+-                      selectedModel === 'Kokoro TTS'
+-                        ? 'bg-orange-500/10 text-orange-400 border-orange-500/30'
+-                        : 'bg-black text-white/40 border-white/10 hover:text-white/80'
+-                    }`}
+-                  >
+-                    Kokoro TTS (High Q)
+-                  </button>
+-                  <button
+-                    id="btn-model-pocket"
+-                    onClick={() => setSelectedModel('Pocket TTS')}
+-                    className={`py-2.5 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+-                      selectedModel === 'Pocket TTS'
+-                        ? 'bg-orange-500/10 text-orange-400 border-orange-500/30'
+-                        : 'bg-black text-white/40 border-white/10 hover:text-white/80'
+-                    }`}
+-                  >
+-                    Pocket TTS (Snappy)
+-                  </button>
+-                </div>
+-              </div>
+-
+-              <div>
+-                <label className="text-[11px] font-mono uppercase tracking-wider text-white/40 block mb-2 font-bold">
+-                  2. Select Vocal Profile
+-                </label>
+-                <select
+-                  id="select-voice-profile"
+-                  value={selectedVoiceId}
+-                  onChange={(e) => setSelectedVoiceId(e.target.value)}
+-                  className="w-full text-xs bg-black border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-orange-500 cursor-pointer"
+-                >
+-                  {filteredVoices.map(v => (
+-                    <option key={v.id} value={v.id}>
+-                      {v.name} ({v.gender} ΓÇó {v.accent} ΓÇó {v.voiceType})
+-                    </option>
+-                  ))}
+-                  {filteredVoices.length === 0 && (
+-                    <option disabled>No profiles registered for this model</option>
+-                  )}
+-                </select>
+-              </div>
+-            </div>
+-
+-            {/* Read text script input container */}
+-            <div className="space-y-2">
+-              <div className="flex justify-between items-center">
+-                <label className="text-[11px] font-mono uppercase tracking-wider text-white/40 block font-bold">
+-                  3. Vocal Script Narrative
+-                </label>
+-                <span className={`text-[10px] font-mono font-medium ${text.length > 4500 ? 'text-rose-450' : 'text-white/30'}`}>
+-                  {text.length.toLocaleString()} / 5,000 chars
+-                </span>
+-              </div>
+-              <textarea
+-                id="textarea-tts-script"
+-                value={text}
+-                onChange={(e) => setText(e.target.value)}
+-                rows={6}
+-                maxLength={5000}
+-                className="w-full bg-black border border-white/10 rounded-2xl p-5 text-sm text-white placeholder-white/20 focus:outline-none focus:border-orange-500 leading-relaxed"
+-                placeholder="Enter narrative scripts directly..."
+-              />
+-            </div>
+-
+-            {/* Slider parameters adjustments */}
+-            <div className="space-y-4 pt-2 border-t border-white/5 font-sans">
+-              <div className="flex justify-between items-center">
+-                <span className="text-[11px] font-mono uppercase tracking-wider text-white/40 font-bold">
+-                  4. Speed Rate Factor
+-                </span>
+-                <span className="text-xs bg-black border border-white/10 px-2 py-0.5 rounded font-mono text-orange-400 font-semibold">
+-                  {speed.toFixed(1)}x Rate
+-                </span>
+-              </div>
+-              <input
+-                id="slider-tts-speed"
+-                type="range"
+-                min="0.5"
+-                max="2.0"
+-                step="0.1"
+-                value={speed}
+-                onChange={(e) => setSpeed(parseFloat(e.target.value))}
+-                className="w-full accent-orange-550 cursor-pointer"
+-              />
+-              <div className="flex justify-between text-[10px] font-mono text-white/30">
+-                <span>0.5s slow tone</span>
+-                <span>Normal</span>
+-                <span>2.0x fast reading</span>
+-              </div>
+-            </div>
++    <div className="flex-1 flex flex-col p-6 bg-gray-900 text-white">
++      <h2 className="text-2xl font-bold mb-4">Text-to-Speech</h2>
++      <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-6">
++        {/* Left Panel: Controls */}
++        <div className="md:col-span-1 bg-gray-800 p-4 rounded-lg flex flex-col space-y-4">
++          <div>
++            <label htmlFor="model" className="block text-sm font-medium text-gray-300">Model</label>
++            <select
++              id="model"
++              value={selectedModel}
++              onChange={(e) => setSelectedModel(e.target.value)}
++              className="mt-1 block w-full p-2 bg-gray-700 border border-gray-600 rounded-md"
++            >
++              <option value="kokoro">Kokoro</option>
++              <option value="pocket_tts">Pocket TTS</option>
++            </select>
++          </div>
+ 
+-            {/* CTA action trigger */}
+-            <button
+-              id="btn-trigger-synthesize"
+-              onClick={handleSynthesize}
+-              disabled={isSynthesizing || text.trim().length < 5}
+-              className={`w-full py-4 bg-orange-500 hover:bg-orange-600 text-black font-extrabold rounded-2xl shadow-[0_0_20px_rgba(242,125,38,0.25)] transition-all text-sm flex items-center justify-center gap-2 cursor-pointer ${
+-                isSynthesizing ? 'opacity-70 cursor-wait' : 'hover:scale-[1.01]'
+-              }`}
++          <div>
++            <label htmlFor="voice" className="block text-sm font-medium text-gray-300">Voice</label>
++            <select
++              id="voice"
++              value={selectedVoiceId}
++              onChange={(e) => setSelectedVoiceId(Number(e.target.value))}
++              className="mt-1 block w-full p-2 bg-gray-700 border border-gray-600 rounded-md"
++              disabled={voicesLoading || availableVoices.length === 0}
+             >
+-              <Volume2 className="w-5 h-5 fill-black" />
+-              {isSynthesizing ? 'Baking Waveform Spectra...' : 'Synthesize speech wave'}
+-            </button>
++              {voicesLoading && <option>Loading voices...</option>}
++              {!voicesLoading && availableVoices.length === 0 && <option>No voices available</option>}
++              {!voicesLoading && availableVoices.map(voice => (
++                <option key={voice.id} value={voice.id}>{voice.name}</option>
++              ))}
++            </select>
++          </div>
+ 
++          <div>
++            <label htmlFor="speed" className="block text-sm font-medium text-gray-300">Speed: {speed.toFixed(1)}x</label>
++            <input
++              id="speed"
++              type="range"
++              min="0.5"
++              max="2.0"
++              step="0.1"
++              value={speed}
++              onChange={(e) => setSpeed(parseFloat(e.target.value))}
++              className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
++            />
+           </div>
+-        </div>
+ 
+-        {/* Live Audio playback and celery status panel */}
+-        <div className="space-y-6">
+-            {/* Audio Outputs controls plate */}
+-          {generatedAudioUrl ? (
+-            <div className="bg-[#0a0a0a] p-6 border border-white/10 rounded-3xl space-y-4 shadow-lg relative overflow-hidden">
+-              <div className="absolute top-0 left-0 w-full h-1 bg-orange-500"></div>
+-              
+-              <div className="flex justify-between items-center">
+-                <span className="text-[10px] font-mono text-white/40 uppercase tracking-widest leading-none">
+-                  Live Output Playback Spectrum
+-                </span>
+-                <a
+-                  id="btn-download-tts"
+-                  href={generatedAudioUrl}
+-                  download="synthesized_speeches_voxforge.wav"
+-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-black hover:bg-white/5 border border-white/10 rounded-xl text-[10px] font-mono text-orange-400 font-bold cursor-pointer"
+-                  title="Download raw audio WAV file"
+-                >
+-                  <Download className="w-3.5 h-3.5" />
+-                  EXPORT WAV
+-                </a>
+-              </div>
++          <div>
++            <label htmlFor="text" className="block text-sm font-medium text-gray-300">Text</label>
++            <textarea
++              id="text"
++              rows={8}
++              value={text}
++              onChange={(e) => setText(e.target.value)}
++              className="mt-1 block w-full p-2 bg-gray-700 border border-gray-600 rounded-md"
++              placeholder="Enter text to synthesize..."
++            />
++          </div>
++
++          <button
++            onClick={handleGenerate}
++            disabled={isLoading || voicesLoading || availableVoices.length === 0}
++            className="w-full flex items-center justify-center p-3 bg-orange-500 hover:bg-orange-600 text-black font-bold rounded-md transition-all disabled:bg-gray-500"
++          >
++            {isLoading ? <><Loader className="animate-spin mr-2" size={20} />Generating...</> : <><Play className="mr-2" size={20} />Generate Audio</>}
++          </button>
++        </div>
+ 
+-              <WaveformPlayer 
+-                audioUrl={generatedAudioUrl} 
+-                file={null}
+-                title={`Vocal Wave: ${selectedModel}`}
+-                subtitle={`Synthesized output with rate speed factor ${speed.toFixed(1)}x`}
+-              />
++        {/* Right Panel: Output */}
++        <div className="md:col-span-2 bg-gray-800 p-4 rounded-lg flex flex-col items-center justify-center">
++          {error && (
++            <div className="text-red-400 flex flex-col items-center">
++              <AlertTriangle size={48} /><p className="mt-2 text-center">{error}</p>
+             </div>
+-          ) : (
+-            <div className="bg-[#0a0a0a] p-8 border border-white/10 border-dashed rounded-3xl text-center text-white/40 h-[220px] flex flex-col justify-center">
+-              <Volume2 className="w-8 h-8 text-white/20 mx-auto mb-3" />
+-              <p className="text-xs font-semibold text-white/60">Audio Preview Slot Pending</p>
+-              <p className="text-[10px] leading-relaxed text-white/30 mt-1 max-w-[200px] mx-auto">
+-                Once speech parameter vectors are mapped, dynamic playbacks will appear here.
+-              </p>
++          )}
++          {!error && isLoading && (
++            <div className="text-center">
++              <Loader className="animate-spin mx-auto" size={48} /><p className="mt-2">Synthesizing audio, please wait...</p>
+             </div>
+           )}
+-
+-          {/* Celery Task Logs outputs console */}
+-          <div className="bg-[#0a0a0a] border border-white/10 rounded-2xl p-5 space-y-3">
+-            <h4 className="text-[11px] font-mono uppercase tracking-wider text-white/40 font-bold flex items-center gap-2">
+-              <Activity className="w-4 h-4 text-orange-500" />
+-              Celery Task Logger
+-            </h4>
+-            
+-            <div className="bg-black border border-white/10 rounded-xl p-4 h-44 overflow-y-auto space-y-2 text-[10px] font-mono leading-relaxed text-white/60">
+-              {progressLog.length === 0 ? (
+-                <p className="text-white/20 italic">Listening for trigger events...</p>
+-              ) : (
+-                progressLog.map((log, idx) => (
+-                  <div key={idx} className="flex gap-2">
+-                    <span className="text-orange-500">&gt;&gt;</span>
+-                    <span className="break-all">{log}</span>
+-                  </div>
+-                ))
+-              )}
+-              {isSynthesizing && (
+-                <div className="flex items-center gap-1.5 text-orange-400">
+-                  <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-ping"></span>
+-                  <span>Processing... ({progress}%)</span>
+-                </div>
+-              )}
++          {!error && !isLoading && audioUrl && (
++            <div className="w-full">
++              <h3 className="text-lg font-semibold mb-2">Generated Audio</h3>
++              <WaveformPlayer audioUrl={audioUrl} />
++              <a href={audioUrl} download={`voxforge-tts-${new Date().toISOString()}.wav`} className="mt-4 w-full flex items-center justify-center p-3 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-md transition-all">
++                <Download className="mr-2" size={20} />Download
++              </a>
+             </div>
+-          </div>
+-
++          )}
++          {!error && !isLoading && !audioUrl && <div className="text-gray-500"><p>Your generated audio will appear here.</p></div>}
+         </div>
+-
+       </div>
+     </div>
+   );
+-}
++};
++
++export default TTSView;
+\ No newline at end of file
+diff --git a/src/components/WaveformPlayer.tsx b/src/components/WaveformPlayer.tsx
+index 7436e78..e8b9281 100644
+--- a/src/components/WaveformPlayer.tsx
++++ b/src/components/WaveformPlayer.tsx
+@@ -3,7 +3,7 @@ import { Play, Pause, Activity, Cpu, Sliders, Music, Zap } from 'lucide-react';
+ 
+ interface WaveformPlayerProps {
+   audioUrl: string | null;
+-  file: File | null;
++  file?: File | null;
+   title?: string;
+   subtitle?: string;
+   onPlayStateChange?: (isPlaying: boolean) => void;
+diff --git a/vite.config.ts b/vite.config.ts
+index 7b7c329..a96ee73 100644
+--- a/vite.config.ts
++++ b/vite.config.ts
+@@ -1,29 +1,15 @@
+-import tailwindcss from '@tailwindcss/vite';
++import { defineConfig } from 'vite';
+ import react from '@vitejs/plugin-react';
++import tailwindcss from '@tailwindcss/vite';
+ import path from 'path';
+-import { defineConfig } from 'vite';
+-
+-export default defineConfig(() => {
+-  return {
+-    plugins: [react(), tailwindcss()],
+-    resolve: {
+-      alias: {
+-        '@': path.resolve(__dirname, '.'),
+-      },
+-    },
+-    server: {
+-      port: 3000,
+-      hmr: process.env.DISABLE_HMR !== 'true',
+-      watch: process.env.DISABLE_HMR === 'true' ? null : {},
+ 
+-      // Γ£à Proxy ΓÇö every /api/* call goes to FastAPI on port 8000
+-      proxy: {
+-        '/api': {
+-          target: 'http://localhost:8000',
+-          changeOrigin: true,
+-          secure: false,
+-        },
+-      },
++// https://vitejs.dev/config/
++export default defineConfig({
++  plugins: [react(), tailwindcss()],
++  resolve: {
++    alias: {
++      // Map @ to the src directory
++      '@': path.resolve(__dirname, './src'),
+     },
+-  };
+-});
++  },
++});
+\ No newline at end of file

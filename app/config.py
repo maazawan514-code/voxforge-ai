@@ -1,6 +1,7 @@
 from functools import lru_cache
+import json
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -98,6 +99,21 @@ class Settings(BaseSettings):
             "http://localhost:7860",
         ]
     )
+
+    @field_validator("CORS_ORIGINS", mode="before")
+    @classmethod
+    def parse_cors_origins(cls, value):
+        """Parse CORS_ORIGINS from .env if it's a JSON string"""
+        if isinstance(value, str):
+            try:
+                parsed = json.loads(value)
+                if isinstance(parsed, list):
+                    return parsed
+            except (json.JSONDecodeError, TypeError):
+                pass
+        if isinstance(value, list):
+            return value
+        return []
 
 
 @lru_cache
