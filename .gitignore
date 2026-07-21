@@ -22,3 +22,5 @@ __pycache__/
 # Stray/local files
 *.docx
 ~$*
+
+app/generated_audio/
