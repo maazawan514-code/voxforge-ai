@@ -35,10 +35,6 @@ numpy==1.26.2
 # Storage
 boto3==1.29.7
 
-# AI/TTS Models
-kokoro-tts==0.0.1
-pocket-tts==0.0.1
-
 # Testing
 pytest==7.4.3
 pytest-asyncio==0.21.1
