@@ -79,6 +79,25 @@ class Settings(BaseSettings):
         default=["mp3", "wav", "flac"]
     )
 
+    @field_validator("ALLOWED_AUDIO_FORMATS", mode="before")
+    @classmethod
+    def parse_allowed_audio_formats(cls, value):
+        """Parse ALLOWED_AUDIO_FORMATS from .env if it's a JSON string"""
+        if isinstance(value, str):
+            try:
+                parsed = json.loads(value)
+                if isinstance(parsed, list):
+                    return parsed
+            except (json.JSONDecodeError, TypeError):
+                pass
+
+            return [item.strip() for item in value.split(",") if item.strip()]
+
+        if isinstance(value, list):
+            return value
+
+        return ["mp3", "wav", "flac"]
+
     # -------------------------------------------------
     # AI
     # -------------------------------------------------
