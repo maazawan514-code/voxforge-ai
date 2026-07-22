@@ -1,11 +1,16 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+
 from .database import Base, engine, ensure_database_schema
 import app.models.user
 import app.models.otp
+
 from .routers import auth, tts, voice_clone, voice_mixer, admin
 from .config import get_settings
+
 import logging
 
 # Configure logging
@@ -14,10 +19,15 @@ logger = logging.getLogger(__name__)
 
 # Get settings
 settings = get_settings()
-print("DEBUG CORS_ORIGINS:", settings.CORS_ORIGINS)
 
-# Create database tables and align any existing schema with the current auth models
-ensure_database_schema()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logger.info("Checking database schema...")
+    ensure_database_schema()
+    logger.info("Database schema is ready.")
+    yield
+
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -26,6 +36,7 @@ app = FastAPI(
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
+    lifespan=lifespan,
 )
 
 # Configure CORS
@@ -44,16 +55,20 @@ app.include_router(voice_clone.router, prefix="/api/voice-clone", tags=["Voice C
 app.include_router(voice_mixer.router, prefix="/api/voice-mixer", tags=["Voice Mixer"])
 app.include_router(admin.router, prefix="/api/admin", tags=["Admin"])
 
-# Root endpoints
+
+# Root endpoint
 @app.get("/")
 def root():
     return {
         "message": "VoxForge AI - Python Voice Generation Platform",
         "version": "1.0.0",
-        "docs": "/docs"
+        "docs": "/docs",
     }
 
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "app": settings.APP_NAME}
+    return {
+        "status": "ok",
+        "app": settings.APP_NAME,
+    }
