@@ -8,8 +8,8 @@ pydantic-settings==2.1.0
 # Database
 sqlalchemy==2.0.23
 alembic==1.13.0
+pyodbc==5.3.0
 psycopg[binary]==3.1.20
-pymssql==2.3.1
 
 # File Uploads
 python-multipart==0.0.6
@@ -31,8 +31,6 @@ ffmpeg-python==0.2.0
 librosa==0.10.0
 soundfile==0.12.1
 numpy==1.26.2
-
-# UI/Frontend
 
 # Storage
 boto3==1.29.7
