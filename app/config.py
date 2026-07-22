@@ -1,9 +1,8 @@
 from functools import lru_cache
 import json
-from typing import Annotated
 
 from pydantic import Field, field_validator
-from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -76,7 +75,7 @@ class Settings(BaseSettings):
     MAX_UPLOAD_SIZE: int = 20 * 1024 * 1024
     UPLOAD_DIR: str = "app/generated_audio"
 
-    ALLOWED_AUDIO_FORMATS: Annotated[list[str], NoDecode] = Field(
+    ALLOWED_AUDIO_FORMATS: list[str] = Field(
         default=["mp3", "wav", "flac"]
     )
 
