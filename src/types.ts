@@ -8,16 +8,15 @@ export interface User {
 }
 
 export interface Voice {
-  id: string;
+  id: number;
   name: string;
-  modelName: 'Kokoro TTS' | 'Pocket TTS';
-  voiceType: 'preset' | 'cloned' | 'mixed';
-  previewUrl?: string;
-  isActive: boolean;
-  gender: 'Male' | 'Female' | 'Nuance' | 'Synthetic';
+  modelName: string;
+  voiceType: string;
+  gender: string;
   age: string;
   accent: string;
   description: string;
+  isActive: boolean;
   createdAt: string;
   avatarColor: string;
 }
