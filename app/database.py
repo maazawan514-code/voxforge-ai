@@ -11,8 +11,15 @@ logger.info("=" * 60)
 logger.info(f"DATABASE_URL: {settings.DATABASE_URL}")
 logger.info("=" * 60)
 
-engine = create_engine(settings.DATABASE_URL)
-
+engine = create_engine(
+    settings.DATABASE_URL,
+    pool_pre_ping=True,
+    pool_recycle=1800,
+    pool_timeout=30,
+    pool_size=5,
+    max_overflow=10,
+    pool_reset_on_return="rollback",
+)
 logger.info(f"ENGINE DIALECT: {engine.dialect.name}")
 logger.info(f"ENGINE DRIVER: {engine.dialect.driver}")
 

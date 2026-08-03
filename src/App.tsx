@@ -102,6 +102,10 @@ export default function App() {
     setActiveTab('dashboard');
   };
 
+  const handleGoToAuth = () => {
+    setActiveTab('voiceauth');
+  };
+
   const handleLogout = () => {
     setCurrentUser(null);
     setActiveTab('landing');
@@ -142,8 +146,8 @@ export default function App() {
   // Main navigation screens route switcher
   const renderActiveView = () => {
     switch (activeTab) {
-      case 'landing':
-        return <LandingView voices={voices} onSignIn={handleSignIn} />;
+     case 'landing':
+        return <LandingView voices={voices} onGoToAuth={handleGoToAuth} />;
       case 'dashboard':
         return (
           <DashboardView 
@@ -175,26 +179,35 @@ export default function App() {
         return <VoiceAuthView onSignIn={handleSignIn} currentUser={currentUser} />;
       case 'admin':
         return <AdminView />;
-      default:
-        return <LandingView voices={voices} onSignIn={handleSignIn} />;
+        default:
+        return <LandingView voices={voices} onGoToAuth={handleGoToAuth} />;
     }
   };
 
   return (
     <div id="app-root-container" className="flex h-screen w-screen overflow-hidden bg-[#050505] font-sans text-[#e0e0e0] antialiased">
-      {/* Dynamic sidebar left rail */}
-      <Sidebar 
-        activeTab={activeTab} 
-        setActiveTab={setActiveTab} 
-        currentUser={currentUser} 
-        onLogout={handleLogout}
-        backgroundJobsCount={backgroundJobsCount}
-      />
-
-      {/* Primary content area panel */}
-      <main id="app-main-view" className="flex-1 flex flex-col h-full overflow-hidden relative">
-        {renderActiveView()}
-      </main>
+      {currentUser ? (
+        <>
+          <Sidebar 
+            activeTab={activeTab} 
+            setActiveTab={setActiveTab} 
+            currentUser={currentUser} 
+            onLogout={handleLogout}
+            backgroundJobsCount={backgroundJobsCount}
+          />
+          <main id="app-main-view" className="flex-1 flex flex-col h-full overflow-hidden relative">
+            {renderActiveView()}
+          </main>
+        </>
+      ) : (
+        <main id="app-main-view" className="flex-1 flex flex-col h-full overflow-hidden relative w-full">
+          {activeTab === 'voiceauth' ? (
+            <VoiceAuthView onSignIn={handleSignIn} currentUser={currentUser} />
+          ) : (
+            <LandingView voices={voices} onGoToAuth={handleGoToAuth} />
+          )}
+        </main>
+      )}
     </div>
   );
 }

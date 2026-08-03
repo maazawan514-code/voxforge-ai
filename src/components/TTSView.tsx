@@ -191,7 +191,7 @@ export default function TTSView({ voices, onAddGeneration }: TTSViewProps) {
                 <select
                   id="select-voice-profile"
                   value={selectedVoiceId}
-                  onChange={(e) => setSelectedVoiceId(Number(e.target.value))}                  className="w-full text-xs bg-black border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-orange-500 cursor-pointer"
+                    onChange={(e) => setSelectedVoiceId(Number(e.target.value))}                  className="w-full text-xs bg-black border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-orange-500 cursor-pointer"
                 >
                   {filteredVoices.map(v => (
                     <option key={v.id} value={v.id}>

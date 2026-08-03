@@ -1,9 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
-import os
-import shutil
-from pathlib import Path
 from ..database import get_db
 from ..models.user import User
 from ..models.voice import MixedVoice, Voice, AudioGeneration
@@ -14,8 +10,6 @@ from ..schemas.voice_mixer import (
     VoiceResponse,
 )
 from ..services.audio_mixer import AudioMixerService
-from ..services.tts_service import TTSService
-from ..config import get_settings
 from ..utils.security import get_current_user
 from ..utils.audio_validation import validate_mixer_weights, validate_text_input
 
@@ -179,122 +173,10 @@ async def get_mixed_voices_history(
     ]
 
 
-# Audio Playback & Download Endpoints
-
-@router.get("/audio/{audio_id}")
-async def stream_mixed_audio(
-    audio_id: str,
-    current_user: User = Depends(get_current_user),
-):
-    """Stream mixed audio file for playback in browser"""
-    try:
-        file_path = AudioMixerService.get_mixed_audio_file(audio_id, current_user.id)
-        
-        if not file_path or not file_path.exists():
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Mixed audio file not found"
-            )
-        
-        return FileResponse(
-            path=str(file_path),
-            media_type="audio/wav",
-            headers={"Content-Disposition": "inline"},
-        )
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to stream mixed audio: {str(e)}"
-        )
-
-
-@router.get("/audio/{audio_id}/download")
-async def download_mixed_audio(
-    audio_id: str,
-    current_user: User = Depends(get_current_user),
-):
-    """Download mixed audio file"""
-    try:
-        file_path = AudioMixerService.get_mixed_audio_file(audio_id, current_user.id)
-        
-        if not file_path or not file_path.exists():
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Mixed audio file not found"
-            )
-        
-        return FileResponse(
-            path=str(file_path),
-            media_type="audio/wav",
-            filename=f"voxforge_mixed_{audio_id}.wav",
-            headers={"Content-Disposition": "attachment"},
-        )
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to download mixed audio: {str(e)}"
-        )
-
-
 # Helper functions
 
-
 async def _get_voice_audio_sample(voice: Voice) -> str:
-    """
-    Get or generate audio sample for a voice.
-    
-    - Returns cached sample if it already exists
-    - Otherwise generates a short sample using TTSService and caches it
-    - Raises HTTPException if the voice name is invalid or generation fails
-    """
-    settings = get_settings()
-    audio_dir = settings.UPLOAD_DIR
-    sample_path = os.path.join(audio_dir, f"sample_{voice.id}.wav")
-    
-    # Check if cached sample already exists
-    if os.path.exists(sample_path):
-        return sample_path
-    
-    # Ensure audio directory exists
-    os.makedirs(audio_dir, exist_ok=True)
-    
-    # Validate that the voice name is a real Kokoro voice
-    available_voices = TTSService.AVAILABLE_VOICES.get("kokoro", [])
-    valid_voice_names = {v["name"] for v in available_voices}
-    
-    if voice.name not in valid_voice_names:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Voice name '{voice.name}' is not a valid Kokoro voice. Available voices: {', '.join(sorted(valid_voice_names))}"
-        )
-    
-    # Generate audio sample using TTSService
-    try:
-        sample_text = "This is a preview of my voice."
-        result = TTSService.generate_tts(
-            text=sample_text,
-            model_name="kokoro",
-            voice=voice.name,
-            speed=1.0,
-            user_id=None,  # Not associated with a specific user
-        )
-        
-        # Move the generated file to the desired cache location
-        generated_path = result.get("file_path")
-        if not generated_path or not os.path.exists(generated_path):
-            raise Exception("TTS service did not generate a valid audio file")
-        
-        shutil.move(generated_path, sample_path)
-        return sample_path
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to generate audio sample for voice '{voice.name}': {str(e)}"
-        )
+    """Get or generate audio sample for a voice"""
+    # In production, this would return a pre-generated sample or cache
+    # For now, return a placeholder path
+    return f"app/generated_audio/sample_{voice.id}.wav"
