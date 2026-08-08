@@ -67,6 +67,7 @@ class Settings(BaseSettings):
     SMTP_FROM_EMAIL: str = "noreply@voxforge.ai"
     SMTP_FROM_NAME: str = "VoxForge AI"
     SMTP_USE_TLS: bool = True
+    RESEND_API_KEY: str = ""
 
     # -------------------------------------------------
     # Uploads
