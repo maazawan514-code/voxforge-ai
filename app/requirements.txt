@@ -31,7 +31,7 @@ pydub==0.25.1
 ffmpeg-python==0.2.0
 librosa==0.10.0
 soundfile==0.12.1
-numpy==1.26.2
+numpy==2.0.2
 
 # TTS
 kokoro-onnx==0.4.9
