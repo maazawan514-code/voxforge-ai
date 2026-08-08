@@ -40,7 +40,7 @@ export default function App() {
         if (ttsVoices.length > 0) {
           // Convert TTSVoice objects to Voice objects with required fields
           const convertedVoices: Voice[] = ttsVoices.map((voice: TTSVoice) => ({
-            id: String(voice.id), // Convert numeric id to string
+            id: voice.id,
             name: voice.name,
             modelName: 'Kokoro TTS',
             voiceType: 'preset',
