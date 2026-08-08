@@ -11,8 +11,14 @@ logger.info("=" * 60)
 logger.info(f"DATABASE_URL: {settings.DATABASE_URL}")
 logger.info("=" * 60)
 
+DATABASE_URL = settings.DATABASE_URL
+if DATABASE_URL.startswith("mssql+pyodbc://"):
+    DATABASE_URL = DATABASE_URL.replace("mssql+pyodbc://", "mssql+pymssql://")
+if "?" in DATABASE_URL:
+    DATABASE_URL = DATABASE_URL.split("?")[0]
+
 engine = create_engine(
-    settings.DATABASE_URL,
+    DATABASE_URL,
     pool_pre_ping=True,
     pool_recycle=1800,
     pool_timeout=30,

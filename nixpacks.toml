@@ -1,7 +1,7 @@
 providers = ["python"]
 
 [phases.setup]
-nixPkgs = ["python311", "gcc", "unixODBC", "unixODBCDrivers.msodbcsql18"]
+nixPkgs = ["python311", "gcc", "freetds"]
 
 [phases.install]
 cmds = [
@@ -11,4 +11,4 @@ cmds = [
 ]
 
 [start]
-cmd = ". /opt/venv/bin/activate && export LD_LIBRARY_PATH=$(find /nix/store -name 'libodbc.so.2' 2>/dev/null -exec dirname {} \\; | head -1):$LD_LIBRARY_PATH && uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+cmd = ". /opt/venv/bin/activate && uvicorn app.main:app --host 0.0.0.0 --port $PORT"
