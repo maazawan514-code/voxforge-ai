@@ -12,7 +12,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { Voice, MixedVoice } from '../types';
-import { request } from '../utils/api';
+import { API_BASE_URL, request } from '../utils/api';
 import WaveformPlayer from './WaveformPlayer';
 
 interface MixerViewProps {
@@ -123,7 +123,7 @@ export default function MixerView({ voices, onAddVoice }: MixerViewProps) {
         },
         body: JSON.stringify(body),
       });
-      setMixedAudioUrl(data.audio_url);
+      setMixedAudioUrl(`${API_BASE_URL}${data.audio_url}`);
       setMixedAudioId(data.audio_id);
 
       // Register blended voice in TTS voice list
@@ -397,7 +397,7 @@ export default function MixerView({ voices, onAddVoice }: MixerViewProps) {
                 </span>
                 <a
                   id="btn-download-mixed"
-                  href={`/api/voice-mixer/audio/${mixedAudioId}/download`}
+                  href={`${API_BASE_URL}/api/voice-mixer/audio/${mixedAudioId}/download`}
                   download={`voxforge_blend_${presetName}.wav`}
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-black border border-white/10 rounded-xl text-[10px] font-mono text-orange-400 font-bold hover:bg-white/5 cursor-pointer"
                 >
