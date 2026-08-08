@@ -10,5 +10,8 @@ cmds = [
   ". /opt/venv/bin/activate && pip install -r app/requirements.txt"
 ]
 
+[variables]
+LD_LIBRARY_PATH = "/root/.nix-profile/lib"
+
 [start]
 cmd = ". /opt/venv/bin/activate && uvicorn app.main:app --host 0.0.0.0 --port $PORT"
