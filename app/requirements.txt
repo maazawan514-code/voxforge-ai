@@ -33,6 +33,9 @@ librosa==0.10.0
 soundfile==0.12.1
 numpy==1.26.2
 
+# TTS
+kokoro-onnx==0.4.9
+
 # Storage
 boto3==1.29.7
 
